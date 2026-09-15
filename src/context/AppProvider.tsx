@@ -3,14 +3,16 @@ import { Text, View } from 'react-native';
 
 import { DEMO_PASSWORD, DEMO_USER } from '@/constants/labels';
 import { createId } from '@/lib/id';
-import { cloneSectorFields, nextSurveyCode } from '@/lib/survey';
+import { cloneSectorFields, collectPhotos, nextSurveyCode } from '@/lib/survey';
 import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
+import { emptyServiceData } from '@/lib/service';
 import {
   archiveClient as archiveClientRecord,
   clearSession,
   createClient,
   createProject,
   deleteSurvey,
+  emptyElement,
   emptySector,
   loadAppData,
   resetDemoData as resetStoredDemo,
@@ -22,10 +24,13 @@ import {
 import type {
   Client,
   ClientDraft,
+  ClientProjectSetup,
   PhotoEvidence,
   Project,
   ProjectDraft,
+  ServiceType,
   Survey,
+  SurveyElement,
   SurveySector,
   User,
 } from '@/types';
@@ -45,7 +50,8 @@ type AppContextValue = {
   archiveClient: (id: string) => Promise<void>;
   addProject: (draft: ProjectDraft) => Promise<Project>;
   editProject: (id: string, draft: ProjectDraft) => Promise<Project | null>;
-  startSurvey: (projectId: string) => Promise<Survey>;
+  ensureClientAndProject: (setup: ClientProjectSetup) => Promise<{ client: Client; project: Project }>;
+  startSurvey: (projectId: string, serviceType: ServiceType) => Promise<Survey>;
   saveSurvey: (survey: Survey, silent?: boolean) => Promise<Survey>;
   completeSurvey: (id: string) => Promise<Survey | null>;
   discardSurvey: (id: string) => Promise<void>;
@@ -53,7 +59,16 @@ type AppContextValue = {
   saveSector: (surveyId: string, sector: SurveySector) => Promise<void>;
   duplicateSector: (surveyId: string, sectorId: string) => Promise<SurveySector | null>;
   removeSector: (surveyId: string, sectorId: string) => Promise<void>;
-  addPhoto: (input: { surveyId: string; sectorId?: string; uri: string; category?: PhotoEvidence['category'] }) => Promise<PhotoEvidence | null>;
+  addElement: (surveyId: string, sectorId: string) => Promise<SurveyElement | null>;
+  saveElement: (surveyId: string, element: SurveyElement) => Promise<void>;
+  removeElement: (surveyId: string, elementId: string) => Promise<void>;
+  addPhoto: (input: {
+    surveyId: string;
+    sectorId?: string;
+    elementId?: string;
+    uri: string;
+    category?: PhotoEvidence['category'];
+  }) => Promise<PhotoEvidence | null>;
   updatePhoto: (surveyId: string, photoId: string, patch: Partial<PhotoEvidence>) => Promise<void>;
   removePhoto: (surveyId: string, photoId: string) => Promise<void>;
   resetDemoData: () => Promise<void>;
@@ -154,19 +169,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         return project;
       },
-      startSurvey: async (projectId) => {
+      ensureClientAndProject: async (setup) => {
+        let client = setup.clientId ? clients.find((item) => item.id === setup.clientId) : undefined;
+        if (!client && setup.client) {
+          client = await createClient(setup.client);
+          setClients((current) => [client!, ...current]);
+        }
+        if (!client) {
+          throw new Error('Falta el cliente para crear el proyecto.');
+        }
+        const project = await createProject({ ...setup.project, clientId: client.id });
+        setProjects((current) => [project, ...current]);
+        showToast(setup.clientId ? 'Proyecto listo para el levantamiento' : 'Cliente y proyecto listos');
+        return { client, project };
+      },
+      startSurvey: async (projectId, serviceType) => {
         const now = new Date().toISOString();
         const survey: Survey = {
           id: createId('srv'),
           code: nextSurveyCode(surveys),
           projectId,
           userId: session?.id ?? DEMO_USER.id,
+          serviceType,
           status: 'draft',
           startedAt: now,
           updatedAt: now,
-          contaminations: [],
-          uses: [],
-          exposures: [],
+          serviceData: emptyServiceData(serviceType),
           sectors: [],
           photos: [],
         };
@@ -235,7 +263,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         const sector = current.sectors.find((item) => item.id === sectorId);
         if (sector) {
-          await Promise.all(sector.photos.map((photo) => deleteLocalPhoto(photo.uri)));
+          const uris = [...sector.photos, ...sector.elements.flatMap((element) => element.photos)].map((photo) => photo.uri);
+          await Promise.all(uris.map((uri) => deleteLocalPhoto(uri)));
         }
         const saved = await upsertSurvey({
           ...current,
@@ -243,7 +272,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         replaceSurvey(saved);
       },
-      addPhoto: async ({ surveyId, sectorId, uri, category = 'problem' }) => {
+      addElement: async (surveyId, sectorId) => {
+        const current = surveysRef.current.find((item) => item.id === surveyId);
+        if (!current) return null;
+        const element = emptyElement(surveyId, sectorId, current.serviceType);
+        const saved = await upsertSurvey({
+          ...current,
+          sectors: current.sectors.map((sector) =>
+            sector.id === sectorId ? { ...sector, elements: [...sector.elements, element] } : sector,
+          ),
+        });
+        replaceSurvey(saved);
+        return element;
+      },
+      saveElement: async (surveyId, element) => {
+        const current = surveysRef.current.find((item) => item.id === surveyId);
+        if (!current) return;
+        const nextElement = { ...element, updatedAt: new Date().toISOString() };
+        const saved = await upsertSurvey({
+          ...current,
+          sectors: current.sectors.map((sector) =>
+            sector.id === element.sectorId
+              ? {
+                  ...sector,
+                  elements: sector.elements.some((item) => item.id === element.id)
+                    ? sector.elements.map((item) => (item.id === element.id ? nextElement : item))
+                    : [...sector.elements, nextElement],
+                }
+              : sector,
+          ),
+        });
+        replaceSurvey(saved);
+      },
+      removeElement: async (surveyId, elementId) => {
+        const current = surveysRef.current.find((item) => item.id === surveyId);
+        if (!current) return;
+        const element = current.sectors.flatMap((sector) => sector.elements).find((item) => item.id === elementId);
+        if (element) {
+          await Promise.all(element.photos.map((photo) => deleteLocalPhoto(photo.uri)));
+        }
+        const saved = await upsertSurvey({
+          ...current,
+          sectors: current.sectors.map((sector) => ({
+            ...sector,
+            elements: sector.elements.filter((item) => item.id !== elementId),
+          })),
+        });
+        replaceSurvey(saved);
+      },
+      addPhoto: async ({ surveyId, sectorId, elementId, uri, category = 'overview' }) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return null;
         const localUri = await savePhotoLocally(uri);
@@ -252,11 +329,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
           uri: localUri,
           surveyId,
           sectorId,
+          elementId,
           category,
           createdAt: new Date().toISOString(),
         };
 
-        if (sectorId) {
+        if (elementId && sectorId) {
+          const sectors = current.sectors.map((sector) =>
+            sector.id === sectorId
+              ? {
+                  ...sector,
+                  elements: sector.elements.map((element) =>
+                    element.id === elementId ? { ...element, photos: [...element.photos, photo] } : element,
+                  ),
+                }
+              : sector,
+          );
+          replaceSurvey(await upsertSurvey({ ...current, sectors }));
+        } else if (sectorId) {
           const sectors = current.sectors.map((sector) =>
             sector.id === sectorId ? { ...sector, photos: [...sector.photos, photo] } : sector,
           );
@@ -273,14 +363,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const saved = await upsertSurvey({
           ...current,
           photos: current.photos.map(mapPhoto),
-          sectors: current.sectors.map((sector) => ({ ...sector, photos: sector.photos.map(mapPhoto) })),
+          sectors: current.sectors.map((sector) => ({
+            ...sector,
+            photos: sector.photos.map(mapPhoto),
+            elements: sector.elements.map((element) => ({ ...element, photos: element.photos.map(mapPhoto) })),
+          })),
         });
         replaceSurvey(saved);
       },
       removePhoto: async (surveyId, photoId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
-        const all = [...current.photos, ...current.sectors.flatMap((sector) => sector.photos)];
+        const all = collectPhotos(current);
         const photo = all.find((item) => item.id === photoId);
         if (photo) await deleteLocalPhoto(photo.uri);
         const saved = await upsertSurvey({
@@ -289,6 +383,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           sectors: current.sectors.map((sector) => ({
             ...sector,
             photos: sector.photos.filter((item) => item.id !== photoId),
+            elements: sector.elements.map((element) => ({
+              ...element,
+              photos: element.photos.filter((item) => item.id !== photoId),
+            })),
           })),
         });
         replaceSurvey(saved);

@@ -15,8 +15,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DEMO_USER } from '@/constants/labels';
 import { useApp } from '@/context/AppProvider';
 import { hasBadCondition, hasHighSeverity } from '@/lib/survey';
+import type { ServiceType } from '@/types';
 
-type Filter = 'all' | 'draft' | 'completed' | 'floor' | 'roof' | 'bad' | 'criticality';
+type Filter = 'all' | 'draft' | 'completed' | ServiceType | 'bad' | 'criticality';
 
 export default function SurveysScreen() {
   const { clients, projects, surveys, session } = useApp();
@@ -36,7 +37,9 @@ export default function SurveysScreen() {
     return surveys
       .filter((survey) => {
         if (filter === 'draft' || filter === 'completed') return survey.status === filter;
-        if (filter === 'floor' || filter === 'roof') return survey.surfaceType === filter;
+        if (filter === 'epoxy' || filter === 'pu_cement' || filter === 'roof_waterproofing' || filter === 'corrosion_control') {
+          return survey.serviceType === filter;
+        }
         if (filter === 'bad') return hasBadCondition(survey);
         if (filter === 'criticality') return hasHighSeverity(survey);
         return true;
@@ -44,7 +47,7 @@ export default function SurveysScreen() {
       .filter((survey) => {
         const project = projects.find((item) => item.id === survey.projectId);
         const client = project ? clients.find((item) => item.id === project.clientId) : undefined;
-        return [survey.code, project?.name, client?.name, project?.location, project?.city, project?.address]
+        return [survey.code, project?.name, client?.name, project?.location, project?.city]
           .filter(Boolean)
           .some((value) => value!.toLowerCase().includes(term));
       })
@@ -58,7 +61,11 @@ export default function SurveysScreen() {
     <Screen bottomSafe={false}>
       <ScreenHeader title="Levantamientos" back={false} right={<ProfileButton />} />
       <View className="gap-3">
-        <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar por código, proyecto, cliente o ubicación" />
+        <SearchInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar por código, proyecto, cliente o ubicación"
+        />
         <FilterChips
           value={filter}
           onChange={setFilter}
@@ -66,13 +73,20 @@ export default function SurveysScreen() {
             { value: 'all', label: 'Todos' },
             { value: 'draft', label: 'Borradores' },
             { value: 'completed', label: 'Finalizados' },
-            { value: 'floor', label: 'Piso' },
-            { value: 'roof', label: 'Cubierta' },
+            { value: 'epoxy', label: 'Epóxicos' },
+            { value: 'pu_cement', label: 'PU cemento' },
+            { value: 'roof_waterproofing', label: 'Cubiertas' },
+            { value: 'corrosion_control', label: 'Corrosión' },
             { value: 'bad', label: 'Estado malo/crítico' },
             { value: 'criticality', label: 'Criticidad alta' },
           ]}
         />
         <Button label="+ Nuevo levantamiento" onPress={() => router.push('/levantamientos/nuevo')} />
+        <Button
+          label="Nuevo cliente y proyecto"
+          variant="ghost"
+          onPress={() => router.push('/levantamientos/nuevo?origen=nuevo')}
+        />
       </View>
 
       {showDraftsApart ? (

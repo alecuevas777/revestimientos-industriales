@@ -10,13 +10,13 @@ import { ProgressHeader } from '@/components/ui/ProgressHeader';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { WIZARD_STEPS } from '@/constants/labels';
+import { photoCategoriesForService } from '@/constants/options';
 import { useApp } from '@/context/AppProvider';
-import { ConditionsStep } from '@/features/survey/ConditionsStep';
 import { InfoStep } from '@/features/survey/InfoStep';
 import { NotesStep } from '@/features/survey/NotesStep';
 import { ReviewStep } from '@/features/survey/ReviewStep';
 import { SectorsStep } from '@/features/survey/SectorsStep';
-import { SurfaceStep } from '@/features/survey/SurfaceStep';
+import { ServiceConditionsStep } from '@/features/survey/ServiceConditionsStep';
 import { formatRelative } from '@/lib/format';
 import { push, replace, routeParam } from '@/lib/nav';
 import {
@@ -24,7 +24,6 @@ import {
   resumeStep,
   surveyNeedsSector,
   validateConditionFields,
-  validateSurfaceFields,
   validateSurveyForComplete,
 } from '@/lib/survey';
 import type { Survey } from '@/types';
@@ -88,12 +87,10 @@ export default function EditSurveyScreen() {
   function next() {
     const nextErrors =
       step === 1
-        ? validateSurfaceFields(draft)
-        : step === 2
-          ? validateConditionFields(draft)
-          : step === 3 && surveyNeedsSector(draft) && draft.sectors.filter((item) => item.name.trim()).length === 0
-            ? [draft.scope === 'critical_points' ? 'Registra al menos un punto crítico.' : 'Agrega al menos un sector.']
-            : [];
+        ? validateConditionFields(draft)
+        : step === 2 && surveyNeedsSector(draft) && draft.sectors.filter((item) => item.name.trim()).length === 0
+          ? [draft.scope === 'critical_points' ? 'Registra al menos un punto crítico.' : 'Agrega al menos un sector.']
+          : [];
     if (nextErrors.length) {
       setErrors(nextErrors);
       return;
@@ -118,13 +115,9 @@ export default function EditSurveyScreen() {
       ) : null}
 
       {step === 1 ? (
-        <SurfaceStep
+        <ServiceConditionsStep
           survey={draft}
-          errors={{
-            surfaceType: errors.find((item) => item.includes('tipo de superficie')),
-            totalArea: errors.find((item) => item.includes('superficie aproximada')),
-            scope: errors.find((item) => item.includes('alcance')),
-          }}
+          errors={errors}
           onChange={(partial) => {
             setErrors([]);
             void patch(partial);
@@ -133,17 +126,6 @@ export default function EditSurveyScreen() {
       ) : null}
 
       {step === 2 ? (
-        <ConditionsStep
-          survey={draft}
-          error={errors.find((item) => item.includes('estado general'))}
-          onChange={(partial) => {
-            setErrors([]);
-            void patch(partial);
-          }}
-        />
-      ) : null}
-
-      {step === 3 ? (
         <SectorsStep
           survey={draft}
           error={errors[0]}
@@ -158,14 +140,15 @@ export default function EditSurveyScreen() {
         />
       ) : null}
 
-      {step === 4 ? (
+      {step === 3 ? (
         <View className="gap-3">
           <Text className="text-sm leading-5 text-muted">
-            Agrega evidencia general o revisa las fotografías asociadas a cada sector.
+            Agrega evidencia general o revisa las fotografías de sectores y elementos.
           </Text>
           <PhotoGrid
             photos={collectPhotos(draft)}
             sectors={draft.sectors}
+            categories={photoCategoriesForService(draft.serviceType)}
             editable
             onAdd={(uri) => void addPhoto({ surveyId: draft.id, uri, category: 'overview' })}
             onUpdate={(photoId, photoPatch) => void updatePhoto(draft.id, photoId, photoPatch)}
@@ -174,14 +157,9 @@ export default function EditSurveyScreen() {
         </View>
       ) : null}
 
-      {step === 5 ? (
-        <NotesStep
-          survey={draft}
-          onChange={(partial) => void patch(partial)}
-        />
-      ) : null}
+      {step === 4 ? <NotesStep survey={draft} onChange={(partial) => void patch(partial)} /> : null}
 
-      {step === 6 ? (
+      {step === 5 ? (
         <ReviewStep
           survey={draft}
           project={project}

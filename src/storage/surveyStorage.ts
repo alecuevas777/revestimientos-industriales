@@ -1,28 +1,38 @@
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { createId } from '@/lib/id';
+import { emptyServiceData } from '@/lib/service';
 import { collectPhotoUris, nextSurveyCode } from '@/lib/survey';
-import type { Survey, SurveySector } from '@/types';
+import { deleteLocalPhoto } from '@/services/photoStorage';
+import type { ServiceType, Survey, SurveyElement, SurveySector } from '@/types';
 
 import { readJson, writeJson } from './json';
-import { deleteLocalPhoto } from '@/services/photoStorage';
+
+function normalizeElement(element: SurveyElement): SurveyElement {
+  return {
+    ...element,
+    problems: element.problems ?? [],
+    exposures: element.exposures ?? [],
+    photos: element.photos ?? [],
+  };
+}
 
 function normalizeSector(sector: SurveySector): SurveySector {
   return {
     ...sector,
     problems: sector.problems ?? [],
-    contaminations: sector.contaminations ?? [],
     uses: sector.uses ?? [],
     exposures: sector.exposures ?? [],
     photos: sector.photos ?? [],
+    elements: (sector.elements ?? []).map(normalizeElement),
   };
 }
 
 function normalizeSurvey(survey: Survey): Survey {
+  const serviceType = survey.serviceType ?? 'epoxy';
   return {
     ...survey,
-    contaminations: survey.contaminations ?? [],
-    uses: survey.uses ?? [],
-    exposures: survey.exposures ?? [],
+    serviceType,
+    serviceData: survey.serviceData ?? emptyServiceData(serviceType),
     photos: survey.photos ?? [],
     sectors: (survey.sectors ?? []).map(normalizeSector),
   };
@@ -80,8 +90,25 @@ export function emptySector(surveyId: string): SurveySector {
     condition: 'regular',
     severity: 'medium',
     problems: [],
-    contaminations: [],
     uses: [],
+    exposures: [],
+    photos: [],
+    elements: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function emptyElement(surveyId: string, sectorId: string, type: ServiceType): SurveyElement {
+  const now = new Date().toISOString();
+  return {
+    id: createId('elm'),
+    surveyId,
+    sectorId,
+    elementType: type === 'roof_waterproofing' ? 'gutter' : 'column',
+    condition: 'regular',
+    severity: 'medium',
+    problems: [],
     exposures: [],
     photos: [],
     createdAt: now,

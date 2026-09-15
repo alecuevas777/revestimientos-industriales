@@ -14,6 +14,12 @@ export function surveysForProject(projectId: string, surveys: Survey[]) {
   return surveys.filter((survey) => survey.projectId === projectId);
 }
 
+export function surveysForUser(userId: string, surveys: Survey[]) {
+  return [...surveys]
+    .filter((survey) => survey.userId === userId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
 export function lastClientActivity(client: Client, projects: Project[], surveys: Survey[]) {
   return lastActivityAt([
     client.updatedAt,

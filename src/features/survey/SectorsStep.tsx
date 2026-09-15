@@ -41,6 +41,7 @@ export function SectorsStep({ survey, error, onAdd, onDuplicate }: Props) {
             key={item.id}
             sector={item}
             index={index}
+            serviceType={survey.serviceType}
             onPress={() => push(`/levantamientos/${survey.id}/sector/${item.id}`)}
             onDuplicate={onDuplicate ? () => onDuplicate(item.id) : undefined}
           />

@@ -11,21 +11,24 @@ import { Colors } from '@/constants/theme';
 import { pickFromLibrary, takePhoto } from '@/lib/pickPhoto';
 import type { PhotoCategory, PhotoEvidence, SurveySector } from '@/types';
 
+type CategoryOption = { value: PhotoCategory; label: string };
+
 type Props = {
   photos: PhotoEvidence[];
   sectors?: SurveySector[];
+  categories?: CategoryOption[];
   editable?: boolean;
   onAdd?: (uri: string) => void;
   onUpdate?: (id: string, patch: Partial<PhotoEvidence>) => void;
   onRemove?: (id: string) => void;
 };
 
-const CATEGORIES = Object.entries(PHOTO_CATEGORY_LABELS).map(([value, label]) => ({
+const DEFAULT_CATEGORIES = Object.entries(PHOTO_CATEGORY_LABELS).map(([value, label]) => ({
   value: value as PhotoCategory,
   label,
 }));
 
-export function PhotoGrid({ photos, sectors, editable, onAdd, onUpdate, onRemove }: Props) {
+export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, editable, onAdd, onUpdate, onRemove }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = photos.find((photo) => photo.id === openId);
 
@@ -77,7 +80,7 @@ export function PhotoGrid({ photos, sectors, editable, onAdd, onUpdate, onRemove
               <View className="px-3 py-2">
                 <Text className="text-xs font-semibold text-ink">Foto {String(index + 1).padStart(2, '0')}</Text>
                 <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>
-                  {PHOTO_CATEGORY_LABELS[photo.category ?? 'problem']}
+                  {PHOTO_CATEGORY_LABELS[photo.category ?? 'overview']}
                 </Text>
               </View>
             </Pressable>
@@ -105,7 +108,7 @@ export function PhotoGrid({ photos, sectors, editable, onAdd, onUpdate, onRemove
               )}
               <View className="gap-3 bg-white px-5 py-5">
                 <Text className="text-sm text-muted">
-                  {PHOTO_CATEGORY_LABELS[selected.category ?? 'problem']}
+                  {PHOTO_CATEGORY_LABELS[selected.category ?? 'overview']}
                   {selected.sectorId
                     ? ` · ${sectors?.find((item) => item.id === selected.sectorId)?.name || 'Sector'}`
                     : ''}
@@ -114,8 +117,8 @@ export function PhotoGrid({ photos, sectors, editable, onAdd, onUpdate, onRemove
                   <>
                     <ChoiceChips
                       label="Categoría"
-                      options={CATEGORIES}
-                      value={selected.category ?? 'problem'}
+                      options={categories}
+                      value={selected.category ?? 'overview'}
                       onChange={(category) => onUpdate(selected.id, { category })}
                     />
                     <TextInput

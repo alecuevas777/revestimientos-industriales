@@ -2,9 +2,10 @@ import { Text, View, type DimensionValue } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { formatArea, formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
-import { surveyProgress } from '@/lib/survey';
+import { surveyArea, surveyProgress } from '@/lib/survey';
 import type { Survey } from '@/types';
 
 type Props = {
@@ -22,7 +23,10 @@ export function DraftCard({ survey, projectName, onContinue }: Props) {
       <Text className="text-xs font-semibold uppercase tracking-wide text-brand">Continuar levantamiento</Text>
       <Text className="mt-2 text-lg font-bold text-ink">{survey.code}</Text>
       {projectName ? <Text className="mt-1 text-sm text-muted">{projectName}</Text> : null}
-      <Text className="mt-1 text-sm text-muted">{formatArea(survey.totalArea)}</Text>
+      <Text className="mt-1 text-sm text-muted">
+        {SERVICE_TYPE_SHORT[survey.serviceType]}
+        {surveyArea(survey) ? ` · ${formatArea(surveyArea(survey))}` : ''}
+      </Text>
       <Text className="mt-2 text-sm text-muted">Última modificación {formatRelative(survey.updatedAt)}</Text>
       <View className="mt-4">
         <View className="mb-2 flex-row items-center justify-between">

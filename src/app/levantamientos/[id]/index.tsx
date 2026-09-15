@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { InfoRow } from '@/components/InfoRow';
 import { PhotoGrid } from '@/components/PhotoGrid';
+import { ServiceMark } from '@/components/ServiceMark';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -13,87 +14,90 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ConditionBadge, SeverityBadge, SurveyStatusBadge } from '@/components/ui/StatusBadge';
 import {
   COATING_CONDITION_LABELS,
+  CORROSION_LEVEL_LABELS,
   EXISTING_COATING_LABELS,
-  JOINT_CONDITION_LABELS,
-  MOISTURE_LABELS,
+  FLOOR_SUBSTRATE_LABELS,
+  FLOOR_SURFACE_LABELS,
+  MATERIAL_LABELS,
+  OPERATING_TEMP_LABELS,
+  PROTECTION_LABELS,
+  ROOF_KIND_LABELS,
   SCOPE_LABELS,
-  SUBSTRATE_LABELS,
-  SURFACE_TYPE_LABELS,
-  TRAFFIC_LABELS,
   YES_NO_LABELS,
   YES_NO_UNKNOWN_LABELS,
 } from '@/constants/labels';
+import { photoCategoriesForService } from '@/constants/options';
 import { useApp } from '@/context/AppProvider';
-import { contaminationList, exposureList, problemList, useList } from '@/lib/display';
+import { elementTitle, exposureList, sectorProblemList, surveyHeadline, useList } from '@/lib/display';
 import { formatArea, formatDate, formatTime } from '@/lib/format';
 import { push, routeParam } from '@/lib/nav';
 import { collectPhotos } from '@/lib/survey';
-import type { SurveySector } from '@/types';
+import type { SurveyElement, SurveySector } from '@/types';
+
+function ElementLine({ element }: { element: SurveyElement }) {
+  return (
+    <View className="rounded-2xl border border-line bg-canvas px-4 py-3">
+      <Text className="text-sm font-semibold text-ink">{elementTitle(element)}</Text>
+      <View className="mt-2 flex-row flex-wrap gap-2">
+        <ConditionBadge condition={element.condition} />
+        <SeverityBadge severity={element.severity} />
+      </View>
+      {element.corrosionLevel ? (
+        <Text className="mt-2 text-sm text-muted">
+          Corrosión {CORROSION_LEVEL_LABELS[element.corrosionLevel].toLowerCase()}
+        </Text>
+      ) : null}
+      {element.material ? (
+        <Text className="mt-1 text-sm text-muted">{MATERIAL_LABELS[element.material]}</Text>
+      ) : null}
+      <Text className="mt-1 text-sm text-muted">{element.photos.length} fotos</Text>
+    </View>
+  );
+}
 
 function SectorBlock({
   sector,
-  index,
   expanded,
   onToggle,
 }: {
   sector: SurveySector;
-  index: number;
   expanded: boolean;
   onToggle: () => void;
 }) {
   return (
     <Card>
       <Pressable onPress={onToggle} className="min-h-[52px]">
-        <Text className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Sector {String(index + 1).padStart(2, '0')}
-        </Text>
-        <Text className="mt-1 text-base font-semibold text-ink">{sector.name || 'Sector sin nombre'}</Text>
-        <Text className="mt-1 text-sm text-muted">{formatArea(sector.approximateArea)}</Text>
+        <Text className="text-base font-semibold text-ink">{sector.name || 'Sector sin nombre'}</Text>
+        {sector.approximateArea ? (
+          <Text className="mt-1 text-sm text-muted">{formatArea(sector.approximateArea)}</Text>
+        ) : null}
         <View className="mt-3 flex-row flex-wrap gap-2">
           <ConditionBadge condition={sector.condition} />
           <SeverityBadge severity={sector.severity} />
         </View>
         {!expanded ? (
-          <View className="mt-3 gap-1">
-            <Text className="text-sm text-muted">Problemas: {problemList(sector)}</Text>
-            <Text className="text-sm text-muted">Uso: {useList(sector.uses, sector.otherUse)}</Text>
-            <Text className="text-sm text-muted">
-              Fotos: {sector.photos.length}
-            </Text>
-          </View>
+          <Text className="mt-3 text-sm text-muted">
+            {sector.elements.length > 0
+              ? `${sector.elements.length} elementos · ${sector.photos.length} fotos`
+              : `${sectorProblemList(sector)} · ${sector.photos.length} fotos`}
+          </Text>
         ) : null}
       </Pressable>
       {expanded ? (
         <View className="mt-4 gap-3 border-t border-line pt-4">
-          <InfoRow label="Problemas" value={problemList(sector)} />
-          <InfoRow label="Uso" value={useList(sector.uses, sector.otherUse)} />
-          <InfoRow label="Tránsito" value={sector.trafficLevel ? TRAFFIC_LABELS[sector.trafficLevel] : '—'} />
-          <InfoRow label="Exposición" value={exposureList(sector.exposures)} />
-          <InfoRow
-            label="Contaminación"
-            value={contaminationList(sector.contaminations, sector.noRelevantContamination, sector.otherContamination)}
-          />
-          <InfoRow
-            label="Humedad"
-            value={
-              sector.moisture?.observed
-                ? [MOISTURE_LABELS[sector.moisture.observed], sector.moisture.notes].filter(Boolean).join(' · ')
-                : '—'
-            }
-          />
-          <InfoRow
-            label="Juntas"
-            value={
-              sector.joints?.hasJoints === 'yes' && sector.joints.jointCondition
-                ? JOINT_CONDITION_LABELS[sector.joints.jointCondition]
-                : sector.joints?.hasJoints
-                  ? YES_NO_LABELS[sector.joints.hasJoints]
-                  : '—'
-            }
-          />
+          {sector.problems.length > 0 ? <InfoRow label="Problemas" value={sectorProblemList(sector)} /> : null}
+          {sector.uses.length > 0 ? <InfoRow label="Uso" value={useList(sector.uses, sector.otherUse)} /> : null}
+          {sector.exposures.length > 0 ? <InfoRow label="Exposición" value={exposureList(sector.exposures)} /> : null}
           <InfoRow label="Observación" value={sector.observations || 'Sin observación'} />
-          <InfoRow label="Comentario técnico" value={sector.recommendation || 'Sin comentario preliminar'} />
-          <PhotoGrid photos={sector.photos} />
+          {sector.elements.length > 0 ? (
+            <View className="gap-2">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-muted">Elementos</Text>
+              {sector.elements.map((item) => (
+                <ElementLine key={item.id} element={item} />
+              ))}
+            </View>
+          ) : null}
+          <PhotoGrid photos={[...sector.photos, ...sector.elements.flatMap((item) => item.photos)]} />
         </View>
       ) : (
         <Text className="mt-3 text-sm font-semibold text-brand">Ver detalle</Text>
@@ -132,6 +136,8 @@ export default function SurveyDetailScreen() {
     );
   }
 
+  const data = survey.serviceData;
+
   return (
     <Screen>
       <ScreenHeader title={survey.code} right={<SurveyStatusBadge status={survey.status} />} />
@@ -139,6 +145,10 @@ export default function SurveyDetailScreen() {
       <Card>
         <Text className="text-2xl font-bold text-ink">{survey.code}</Text>
         <Text className="mt-1 text-base text-muted">{project?.name}</Text>
+        <View className="mt-3">
+          <ServiceMark type={survey.serviceType} size="md" />
+        </View>
+        <Text className="mt-3 text-sm leading-5 text-muted">{surveyHeadline(survey)}</Text>
       </Card>
 
       <View className="mt-6 gap-3">
@@ -150,30 +160,12 @@ export default function SurveyDetailScreen() {
           <InfoRow label="Fecha" value={formatDate(survey.startedAt)} />
           <InfoRow label="Hora inicio" value={formatTime(survey.startedAt)} />
           <InfoRow label="Hora finalización" value={survey.completedAt ? formatTime(survey.completedAt) : '—'} />
-        </Card>
-      </View>
-
-      <View className="mt-6 gap-3">
-        <SectionHeader title="Superficie" />
-        <Card>
-          <InfoRow label="Tipo" value={survey.surfaceType ? SURFACE_TYPE_LABELS[survey.surfaceType] : '—'} />
-          <InfoRow label="Superficie" value={formatArea(survey.totalArea)} />
-          <InfoRow
-            label="Sustrato"
-            value={
-              survey.substrateType === 'other'
-                ? survey.otherSubstrate
-                : survey.substrateType
-                  ? SUBSTRATE_LABELS[survey.substrateType]
-                  : '—'
-            }
-          />
           <InfoRow label="Alcance" value={survey.scope ? SCOPE_LABELS[survey.scope] : '—'} />
         </Card>
       </View>
 
       <View className="mt-6 gap-3">
-        <SectionHeader title="Condición general" />
+        <SectionHeader title="Condición del servicio" />
         <Card>
           <View className="border-b border-line py-3">
             <Text className="text-xs font-semibold uppercase tracking-wide text-muted">Estado</Text>
@@ -181,41 +173,69 @@ export default function SurveyDetailScreen() {
               {survey.overallCondition ? <ConditionBadge condition={survey.overallCondition} /> : <Text>—</Text>}
             </View>
           </View>
-          <InfoRow
-            label="Humedad"
-            value={
-              survey.moisture?.observed
-                ? [MOISTURE_LABELS[survey.moisture.observed], survey.moisture.notes].filter(Boolean).join(' · ')
-                : '—'
-            }
-          />
-          <InfoRow
-            label="Revestimiento existente"
-            value={
-              survey.existingCoating === 'yes'
-                ? [
-                    survey.existingCoatingType
-                      ? EXISTING_COATING_LABELS[survey.existingCoatingType]
-                      : 'Sí',
-                    survey.existingCoatingCondition
-                      ? COATING_CONDITION_LABELS[survey.existingCoatingCondition]
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : survey.existingCoating
-                  ? YES_NO_UNKNOWN_LABELS[survey.existingCoating]
-                  : '—'
-            }
-          />
-          <InfoRow
-            label="Contaminación"
-            value={contaminationList(
-              survey.contaminations,
-              survey.noRelevantContamination,
-              survey.otherContamination,
-            )}
-          />
+          {data.type === 'epoxy' || data.type === 'pu_cement' ? (
+            <>
+              <InfoRow label="Superficie" value={data.surfaceKind ? FLOOR_SURFACE_LABELS[data.surfaceKind] : '—'} />
+              <InfoRow label="Sustrato" value={data.substrate ? FLOOR_SUBSTRATE_LABELS[data.substrate] : '—'} />
+              <InfoRow label="Área" value={formatArea(data.totalArea)} />
+              <InfoRow
+                label="Revestimiento existente"
+                value={
+                  data.existingCoating === 'yes'
+                    ? [
+                        data.existingCoatingType ? EXISTING_COATING_LABELS[data.existingCoatingType] : 'Sí',
+                        data.existingCoatingCondition
+                          ? COATING_CONDITION_LABELS[data.existingCoatingCondition]
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : data.existingCoating
+                      ? YES_NO_UNKNOWN_LABELS[data.existingCoating]
+                      : '—'
+                }
+              />
+              {data.type === 'pu_cement' ? (
+                <InfoRow
+                  label="Temperatura operacional"
+                  value={
+                    [
+                      data.operatingTemp ? OPERATING_TEMP_LABELS[data.operatingTemp] : null,
+                      data.approxTempC ? `${data.approxTempC} °C` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || '—'
+                  }
+                />
+              ) : null}
+            </>
+          ) : null}
+          {data.type === 'roof_waterproofing' ? (
+            <>
+              <InfoRow label="Tipo de cubierta" value={data.roofKind ? ROOF_KIND_LABELS[data.roofKind] : '—'} />
+              <InfoRow label="Área" value={formatArea(data.totalArea)} />
+            </>
+          ) : null}
+          {data.type === 'corrosion_control' ? (
+            <>
+              <InfoRow
+                label="Protección existente"
+                value={
+                  data.existingProtection === 'yes'
+                    ? [
+                        data.protectionType ? PROTECTION_LABELS[data.protectionType] : 'Sí',
+                        data.protectionCondition ? COATING_CONDITION_LABELS[data.protectionCondition] : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : data.existingProtection
+                      ? YES_NO_UNKNOWN_LABELS[data.existingProtection]
+                      : '—'
+                }
+              />
+              <InfoRow label="Exposición ambiental" value={exposureList(data.exposures)} />
+            </>
+          ) : null}
         </Card>
       </View>
 
@@ -224,13 +244,12 @@ export default function SurveyDetailScreen() {
         {survey.sectors.length === 0 ? (
           <EmptyState title="Sin sectores" description="Este levantamiento no registró sectores." />
         ) : (
-          survey.sectors.map((sector, index) => (
+          survey.sectors.map((item) => (
             <SectorBlock
-              key={sector.id}
-              sector={sector}
-              index={index}
-              expanded={openId === sector.id}
-              onToggle={() => setOpenId((current) => (current === sector.id ? null : sector.id))}
+              key={item.id}
+              sector={item}
+              expanded={openId === item.id}
+              onToggle={() => setOpenId((current) => (current === item.id ? null : item.id))}
             />
           ))
         )}
@@ -238,7 +257,11 @@ export default function SurveyDetailScreen() {
 
       <View className="mt-6 gap-3">
         <SectionHeader title="Evidencia" />
-        <PhotoGrid photos={collectPhotos(survey)} sectors={survey.sectors} />
+        <PhotoGrid
+          photos={collectPhotos(survey)}
+          sectors={survey.sectors}
+          categories={photoCategoriesForService(survey.serviceType)}
+        />
       </View>
 
       {survey.generalObservations ? (
@@ -259,7 +282,7 @@ export default function SurveyDetailScreen() {
         </View>
       ) : null}
 
-      {survey.plantOperational || survey.accessNotes || survey.siteComments ? (
+      {survey.plantOperational || survey.accessNotes ? (
         <View className="mt-6 gap-3 pb-4">
           <SectionHeader title="Condiciones de ejecución" />
           <Card>
@@ -267,16 +290,7 @@ export default function SurveyDetailScreen() {
               label="Planta operativa"
               value={survey.plantOperational ? YES_NO_LABELS[survey.plantOperational] : '—'}
             />
-            <InfoRow
-              label="Restricciones de horario"
-              value={survey.scheduleRestrictions ? YES_NO_LABELS[survey.scheduleRestrictions] : '—'}
-            />
             <InfoRow label="Acceso" value={survey.accessNotes} />
-            <InfoRow
-              label="Maquinaria a retirar"
-              value={survey.machineryToRemove ? YES_NO_LABELS[survey.machineryToRemove] : '—'}
-            />
-            <InfoRow label="Comentarios" value={survey.siteComments} />
           </Card>
         </View>
       ) : (

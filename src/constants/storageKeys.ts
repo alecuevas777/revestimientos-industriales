@@ -6,4 +6,4 @@ export const STORAGE_KEYS = {
   schema: '@ri/schema',
 } as const;
 
-export const SCHEMA_VERSION = '4';
+export const SCHEMA_VERSION = '5';

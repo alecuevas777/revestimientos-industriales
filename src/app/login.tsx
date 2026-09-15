@@ -70,6 +70,7 @@ export default function LoginScreen() {
         <Card className="mt-6">
           <Text className="text-sm font-semibold text-ink">Usuario de demostración</Text>
           <Text className="mt-1 text-sm text-muted">{DEMO_USER.name}</Text>
+          <Text className="text-sm text-muted">{DEMO_USER.role}</Text>
           <Text className="text-sm text-muted">{DEMO_USER.email}</Text>
           <Text className="mt-2 text-sm text-muted">Contraseña: {DEMO_PASSWORD}</Text>
         </Card>

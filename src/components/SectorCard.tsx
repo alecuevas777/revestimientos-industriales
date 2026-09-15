@@ -4,18 +4,21 @@ import { Pressable, Text, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ConditionBadge, SeverityBadge } from '@/components/ui/StatusBadge';
 import { Colors } from '@/constants/theme';
+import { usesElements } from '@/constants/options';
 import { formatArea } from '@/lib/format';
-import type { SurveySector } from '@/types';
+import type { ServiceType, SurveySector } from '@/types';
 
 type Props = {
   sector: SurveySector;
   index: number;
+  serviceType?: ServiceType;
   onPress: () => void;
   onDuplicate?: () => void;
 };
 
-export function SectorCard({ sector, index, onPress, onDuplicate }: Props) {
+export function SectorCard({ sector, index, serviceType, onPress, onDuplicate }: Props) {
   const name = sector.name.trim() || 'Sector sin nombre';
+  const showElements = usesElements(serviceType);
 
   return (
     <Pressable onPress={onPress}>
@@ -26,17 +29,25 @@ export function SectorCard({ sector, index, onPress, onDuplicate }: Props) {
               Sector {String(index + 1).padStart(2, '0')}
             </Text>
             <Text className="mt-1 text-base font-semibold text-ink">{name}</Text>
-            <Text className="mt-1 text-sm text-muted">{formatArea(sector.approximateArea)}</Text>
+            {sector.approximateArea ? (
+              <Text className="mt-1 text-sm text-muted">{formatArea(sector.approximateArea)}</Text>
+            ) : null}
             <View className="mt-3 flex-row flex-wrap gap-2">
               <ConditionBadge condition={sector.condition} />
               <SeverityBadge severity={sector.severity} />
             </View>
             <View className="mt-3 flex-row flex-wrap gap-x-4 gap-y-1">
+              {showElements ? (
+                <Text className="text-sm text-muted">
+                  {sector.elements.length} {sector.elements.length === 1 ? 'elemento' : 'elementos'}
+                </Text>
+              ) : (
+                <Text className="text-sm text-muted">
+                  {sector.problems.length} {sector.problems.length === 1 ? 'problema' : 'problemas'}
+                </Text>
+              )}
               <Text className="text-sm text-muted">
-                {sector.problems.length} {sector.problems.length === 1 ? 'problema' : 'problemas'}
-              </Text>
-              <Text className="text-sm text-muted">
-                {sector.photos.length} {sector.photos.length === 1 ? 'fotografía' : 'fotografías'}
+                {sector.photos.length + sector.elements.reduce((total, item) => total + item.photos.length, 0)} fotos
               </Text>
             </View>
           </View>
@@ -45,13 +56,7 @@ export function SectorCard({ sector, index, onPress, onDuplicate }: Props) {
         <View className="mt-3 flex-row items-center justify-between">
           <Text className="text-sm font-semibold text-brand">Ver / editar</Text>
           {onDuplicate ? (
-            <Pressable
-              onPress={(event) => {
-                event.stopPropagation?.();
-                onDuplicate();
-              }}
-              className="min-h-[40px] justify-center px-1"
-            >
+            <Pressable onPress={onDuplicate} className="min-h-[40px] justify-center px-1">
               <Text className="text-sm font-semibold text-muted">Duplicar</Text>
             </Pressable>
           ) : null}

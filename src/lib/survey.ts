@@ -1,5 +1,7 @@
 import { WIZARD_STEPS } from '@/constants/labels';
-import type { PhotoEvidence, Severity, Survey, SurveySector } from '@/types';
+import { isFloorService, usesElements } from '@/constants/options';
+import { surveyArea } from '@/lib/service';
+import type { PhotoEvidence, Severity, Survey, SurveyElement, SurveySector } from '@/types';
 
 const SEVERITY_RANK: Record<Severity, number> = {
   low: 1,
@@ -18,8 +20,18 @@ export function nextSurveyCode(surveys: Survey[], year = new Date().getFullYear(
   return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
+export function collectElements(survey: Survey): SurveyElement[] {
+  return survey.sectors.flatMap((sector) => sector.elements);
+}
+
 export function collectPhotos(survey: Survey): PhotoEvidence[] {
-  return [...survey.photos, ...survey.sectors.flatMap((sector) => sector.photos)];
+  return [
+    ...survey.photos,
+    ...survey.sectors.flatMap((sector) => [
+      ...sector.photos,
+      ...sector.elements.flatMap((element) => element.photos),
+    ]),
+  ];
 }
 
 export function collectPhotoUris(survey: Survey) {
@@ -30,13 +42,19 @@ export function photoCount(survey: Survey) {
   return collectPhotos(survey).length;
 }
 
+export function elementCount(survey: Survey) {
+  return collectElements(survey).length;
+}
+
 export function problemCount(survey: Survey) {
-  const sectorProblems = survey.sectors.reduce((total, sector) => total + sector.problems.length, 0);
-  return sectorProblems || 0;
+  const fromSectors = survey.sectors.reduce((total, sector) => total + sector.problems.length, 0);
+  const fromElements = collectElements(survey).reduce((total, element) => total + element.problems.length, 0);
+  const fromService = 'problems' in survey.serviceData ? survey.serviceData.problems.length : 0;
+  return fromSectors + fromElements || fromService;
 }
 
 export function sectorProblemCount(sector: SurveySector) {
-  return sector.problems.length;
+  return sector.problems.length + sector.elements.reduce((total, element) => total + element.problems.length, 0);
 }
 
 export function surveyNeedsSector(survey: Survey) {
@@ -44,19 +62,32 @@ export function surveyNeedsSector(survey: Survey) {
 }
 
 export function maxSeverity(survey: Survey): Severity | undefined {
-  if (survey.sectors.length === 0) return undefined;
-  return survey.sectors.reduce<Severity>((current, sector) => {
-    return SEVERITY_RANK[sector.severity] > SEVERITY_RANK[current] ? sector.severity : current;
-  }, survey.sectors[0].severity);
+  const values = [
+    ...survey.sectors.map((sector) => sector.severity),
+    ...collectElements(survey).map((element) => element.severity),
+  ];
+  if (values.length === 0) return undefined;
+  return values.reduce((current, item) => (SEVERITY_RANK[item] > SEVERITY_RANK[current] ? item : current));
 }
 
-export function criticalSectorCount(survey: Survey) {
-  return survey.sectors.filter((sector) => sector.severity === 'high' || sector.severity === 'critical').length;
+export function criticalItemCount(survey: Survey) {
+  const sectors = survey.sectors.filter((sector) => sector.severity === 'high' || sector.severity === 'critical').length;
+  const elements = collectElements(survey).filter(
+    (element) => element.severity === 'high' || element.severity === 'critical',
+  ).length;
+  return sectors + elements;
+}
+
+export function severeCorrosionCount(survey: Survey) {
+  return collectElements(survey).filter((element) => element.corrosionLevel === 'severe').length;
 }
 
 export function hasBadCondition(survey: Survey) {
   if (survey.overallCondition === 'bad' || survey.overallCondition === 'critical') return true;
-  return survey.sectors.some((sector) => sector.condition === 'bad' || sector.condition === 'critical');
+  return (
+    survey.sectors.some((sector) => sector.condition === 'bad' || sector.condition === 'critical') ||
+    collectElements(survey).some((element) => element.condition === 'bad' || element.condition === 'critical')
+  );
 }
 
 export function hasHighSeverity(survey: Survey) {
@@ -67,8 +98,7 @@ export function hasHighSeverity(survey: Survey) {
 export function surveyProgress(survey: Survey) {
   const total = WIZARD_STEPS.length - 1;
   let done = 1;
-  if (survey.surfaceType && survey.totalArea && survey.scope) done += 1;
-  if (survey.overallCondition) done += 1;
+  if (survey.scope && survey.overallCondition) done += 1;
   if (!surveyNeedsSector(survey) || survey.sectors.some((sector) => sector.name.trim())) done += 1;
   if (photoCount(survey) > 0) done += 1;
   if (survey.conclusion?.trim() || survey.generalObservations?.trim() || survey.accessNotes?.trim()) done += 1;
@@ -76,28 +106,28 @@ export function surveyProgress(survey: Survey) {
   return { done: Math.min(done, total), total };
 }
 
-export function surveyProgressPercent(survey: Survey) {
-  const { done, total } = surveyProgress(survey);
-  return Math.round((done / total) * 100);
-}
-
-export function validateSurfaceFields(survey: Survey) {
-  const errors: string[] = [];
-  if (!survey.surfaceType) errors.push('Selecciona el tipo de superficie.');
-  if (!survey.totalArea || survey.totalArea <= 0) errors.push('Ingresa la superficie aproximada en m².');
-  if (!survey.scope) errors.push('Selecciona el alcance de la inspección.');
-  return errors;
-}
-
 export function validateConditionFields(survey: Survey) {
   const errors: string[] = [];
+  if (!survey.scope) errors.push('Selecciona el alcance de la inspección.');
   if (!survey.overallCondition) errors.push('Selecciona el estado general.');
+  if (isFloorService(survey.serviceType) && survey.serviceData.type !== 'corrosion_control') {
+    if (!survey.serviceData.totalArea || survey.serviceData.totalArea <= 0) {
+      errors.push('Ingresa la superficie aproximada en m².');
+    }
+  }
+  if (survey.serviceData.type === 'roof_waterproofing') {
+    if (!survey.serviceData.roofKind) errors.push('Selecciona el tipo de cubierta.');
+    if (!survey.serviceData.totalArea || survey.serviceData.totalArea <= 0) {
+      errors.push('Ingresa la superficie aproximada en m².');
+    }
+  }
   return errors;
 }
 
 export function validateSurveyForComplete(survey: Survey) {
-  const errors = [...validateSurfaceFields(survey), ...validateConditionFields(survey)];
+  const errors = validateConditionFields(survey);
   if (!survey.projectId) errors.unshift('Selecciona un proyecto.');
+  if (!survey.serviceType) errors.unshift('Selecciona el tipo de servicio.');
   if (surveyNeedsSector(survey) && survey.sectors.filter((sector) => sector.name.trim()).length === 0) {
     errors.push(
       survey.scope === 'critical_points'
@@ -105,24 +135,24 @@ export function validateSurveyForComplete(survey: Survey) {
         : 'Agrega al menos un sector.',
     );
   }
+  if (
+    survey.serviceType === 'corrosion_control' &&
+    surveyNeedsSector(survey) &&
+    collectElements(survey).length === 0
+  ) {
+    errors.push('Registra al menos un elemento inspeccionado.');
+  }
   return errors;
 }
 
 export function resumeStep(survey: Survey) {
-  if (!survey.surfaceType || !survey.totalArea || !survey.scope) {
-    return survey.visitReason ? 1 : 0;
-  }
-  if (!survey.overallCondition) return 2;
-  if (surveyNeedsSector(survey) && survey.sectors.length === 0) return 3;
-  return 3;
+  if (!survey.scope || !survey.overallCondition) return survey.visitReason ? 1 : 0;
+  if (surveyNeedsSector(survey) && survey.sectors.length === 0) return 2;
+  return 2;
 }
 
 export function lastActivityAt(dates: Array<string | undefined>) {
   return dates.filter(Boolean).sort((a, b) => b!.localeCompare(a!))[0];
-}
-
-export function emptyMoisture() {
-  return {};
 }
 
 export function cloneSectorFields(sector: SurveySector): Pick<
@@ -132,11 +162,6 @@ export function cloneSectorFields(sector: SurveySector): Pick<
   | 'severity'
   | 'problems'
   | 'otherProblem'
-  | 'moisture'
-  | 'contaminations'
-  | 'noRelevantContamination'
-  | 'otherContamination'
-  | 'joints'
   | 'uses'
   | 'otherUse'
   | 'trafficLevel'
@@ -150,11 +175,6 @@ export function cloneSectorFields(sector: SurveySector): Pick<
     severity: sector.severity,
     problems: [...sector.problems],
     otherProblem: sector.otherProblem,
-    moisture: sector.moisture ? { ...sector.moisture } : undefined,
-    contaminations: [...sector.contaminations],
-    noRelevantContamination: sector.noRelevantContamination,
-    otherContamination: sector.otherContamination,
-    joints: sector.joints ? { ...sector.joints } : undefined,
     uses: [...sector.uses],
     otherUse: sector.otherUse,
     trafficLevel: sector.trafficLevel,
@@ -163,3 +183,5 @@ export function cloneSectorFields(sector: SurveySector): Pick<
     recommendation: sector.recommendation,
   };
 }
+
+export { surveyArea, usesElements };

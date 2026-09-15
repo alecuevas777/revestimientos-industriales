@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { InfoRow } from '@/components/InfoRow';
 import { Card } from '@/components/ui/Card';
 import { TextArea } from '@/components/ui/TextArea';
+import { SERVICE_TYPE_LABELS } from '@/constants/labels';
 import { formatDate, formatTime } from '@/lib/format';
 import type { Client, Project, Survey } from '@/types';
 
@@ -20,6 +21,7 @@ export function InfoStep({ survey, project, client, technician, onChange }: Prop
       <Card>
         <InfoRow label="Cliente" value={client?.name} />
         <InfoRow label="Proyecto" value={project?.name} />
+        <InfoRow label="Servicio" value={SERVICE_TYPE_LABELS[survey.serviceType]} />
         <InfoRow label="Ubicación" value={project?.location || project?.city} />
         <InfoRow label="Técnico" value={technician} />
         <InfoRow label="Fecha" value={formatDate(survey.startedAt)} />

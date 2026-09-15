@@ -1,13 +1,15 @@
 import { Camera, ChevronRight, Layers } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { ServiceMark } from '@/components/ServiceMark';
 import { Card } from '@/components/ui/Card';
 import { ConditionBadge, SeverityBadge, SurveyStatusBadge } from '@/components/ui/StatusBadge';
-import { DEMO_USER, SURFACE_TYPE_LABELS } from '@/constants/labels';
+import { DEMO_USER } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
-import { formatArea, formatDate } from '@/lib/format';
+import { surveyHeadline } from '@/lib/display';
+import { formatDate } from '@/lib/format';
 import { push } from '@/lib/nav';
-import { maxSeverity, photoCount } from '@/lib/survey';
+import { elementCount, maxSeverity, photoCount } from '@/lib/survey';
 import type { Survey } from '@/types';
 
 type Props = {
@@ -28,8 +30,8 @@ export function SurveyCard({
   technician = DEMO_USER.name,
 }: Props) {
   const photos = photoCount(survey);
-  const surface = survey.surfaceType ? SURFACE_TYPE_LABELS[survey.surfaceType] : 'Sin superficie';
   const highest = maxSeverity(survey);
+  const elements = elementCount(survey);
 
   return (
     <Pressable
@@ -46,9 +48,10 @@ export function SurveyCard({
             {clientName || location ? (
               <Text className="mt-1 text-sm text-muted">{[clientName, location].filter(Boolean).join(' · ')}</Text>
             ) : null}
-            <Text className="mt-2 text-sm text-muted">
-              {surface} · {formatArea(survey.totalArea)}
-            </Text>
+            <View className="mt-2">
+              <ServiceMark type={survey.serviceType} />
+            </View>
+            <Text className="mt-2 text-sm leading-5 text-muted">{surveyHeadline(survey)}</Text>
           </View>
           <SurveyStatusBadge status={survey.status} />
         </View>
@@ -63,13 +66,15 @@ export function SurveyCard({
             <View className="flex-row items-center gap-1.5">
               <Layers size={15} color={Colors.muted} />
               <Text className="text-sm text-muted">
-                {survey.sectors.length} {survey.sectors.length === 1 ? 'sector' : 'sectores'}
+                {elements > 0
+                  ? `${elements} ${elements === 1 ? 'elemento' : 'elementos'}`
+                  : `${survey.sectors.length} ${survey.sectors.length === 1 ? 'sector' : 'sectores'}`}
               </Text>
             </View>
             <View className="flex-row items-center gap-1.5">
               <Camera size={15} color={Colors.muted} />
               <Text className="text-sm text-muted">
-                {photos} {photos === 1 ? 'fotografía' : 'fotografías'}
+                {photos} {photos === 1 ? 'foto' : 'fotos'}
               </Text>
             </View>
           </View>

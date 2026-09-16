@@ -40,7 +40,8 @@
           "photosPermission": "Necesitamos acceso a tus fotos para el registro fotográfico del levantamiento.",
           "cameraPermission": "Necesitamos la cámara para documentar superficies en terreno."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": false,

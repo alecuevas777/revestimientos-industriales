@@ -6,14 +6,24 @@
 2. Menú **SQL Editor** → **New query**.
 3. Abre `schema.sql` de esta carpeta, copia **todo** y pégalo.
 4. Pulsa **Run**.
-5. En **Table Editor** deberías ver: `profiles`, `clients`, `projects`, `surveys`, `survey_sectors`, `survey_elements`, `survey_photos`.
+5. En **Table Editor** deberías ver: `perfiles`, `clientes`, `proyectos`, `levantamientos`, `sectores`, `elementos`, `fotos`.
+
+Si ya habías corrido la versión en inglés, este script la borra (tablas vacías) y crea las tablas en español.
 
 El diagrama está en `modelo-datos.pdf`.
 
-## Qué hace el SQL
+## Tablas
 
-- Crea las tablas del dominio (cliente → proyecto → levantamiento → sector → elemento → foto).
-- Activa RLS: el técnico solo ve **sus** levantamientos; clientes y proyectos son catálogo del equipo.
-- Crea un perfil en `profiles` cada vez que se registra un usuario en Auth.
+| Tabla | Qué guarda |
+|---|---|
+| `perfiles` | Ficha del técnico (1:1 con Auth) |
+| `clientes` | Ficha comercial |
+| `proyectos` | Recintos, ligados a un cliente |
+| `levantamientos` | Inspección (código LEV-…) |
+| `sectores` | Zonas o puntos críticos |
+| `elementos` | Pilar, canaleta, sello, etc. |
+| `fotos` | Evidencia (ruta en Storage más adelante) |
+
+Los valores de catálogo (`epoxy`, `draft`, `good`…) siguen en inglés: son los mismos códigos que usa la app.
 
 Todavía no hay Auth en la app ni sync. Eso es el siguiente paso, después de correr este SQL.

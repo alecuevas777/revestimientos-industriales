@@ -12,15 +12,16 @@ import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { DEMO_USER } from '@/constants/labels';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { hasBadCondition, hasHighSeverity } from '@/lib/survey';
 import type { ServiceType } from '@/types';
 
 type Filter = 'all' | 'draft' | 'completed' | ServiceType | 'bad' | 'criticality';
 
 export default function SurveysScreen() {
-  const { clients, projects, surveys, session } = useApp();
+  const { clients, projects, surveys } = useApp();
+  const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -114,7 +115,7 @@ export default function SurveysScreen() {
                 projectName={project?.name}
                 clientName={client?.name}
                 location={project?.city}
-                technician={session?.name ?? DEMO_USER.name}
+                technician={session?.name ?? 'Técnico'}
               />
             );
           })

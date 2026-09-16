@@ -1,18 +1,11 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { ClipboardList, FolderKanban, LayoutDashboard, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { useApp } from '@/context/AppProvider';
-import { href } from '@/lib/nav';
 
 export default function TabsLayout() {
-  const { ready, session } = useApp();
   const insets = useSafeAreaInsets();
-
-  if (ready && !session) {
-    return <Redirect href={href('/login')} />;
-  }
 
   return (
     <Tabs

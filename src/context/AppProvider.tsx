@@ -1,14 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
-import { DEMO_PASSWORD, DEMO_USER } from '@/constants/labels';
+import { useAuth } from '@/context/AuthProvider';
 import { createId } from '@/lib/id';
 import { cloneSectorFields, collectPhotos, nextSurveyCode } from '@/lib/survey';
 import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
 import { emptyServiceData } from '@/lib/service';
 import {
   archiveClient as archiveClientRecord,
-  clearSession,
   createClient,
   createProject,
   deleteSurvey,
@@ -16,7 +15,6 @@ import {
   emptySector,
   loadAppData,
   resetDemoData as resetStoredDemo,
-  saveSession,
   updateClient,
   updateProject,
   upsertSurvey,
@@ -32,19 +30,15 @@ import type {
   Survey,
   SurveyElement,
   SurveySector,
-  User,
 } from '@/types';
 
 type AppContextValue = {
   ready: boolean;
-  session: User | null;
   clients: Client[];
   projects: Project[];
   surveys: Survey[];
   toast: string | null;
   showToast: (message: string) => void;
-  login: (email: string, password: string) => Promise<string | null>;
-  logout: () => Promise<void>;
   addClient: (draft: ClientDraft) => Promise<Client>;
   editClient: (id: string, draft: ClientDraft) => Promise<Client | null>;
   archiveClient: (id: string) => Promise<void>;
@@ -80,8 +74,8 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
   const [ready, setReady] = useState(false);
-  const [session, setSession] = useState<User | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -92,7 +86,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadAppData()
       .then((data) => {
-        setSession(data.session);
         setClients(data.clients);
         setProjects(data.projects);
         setSurveys(data.surveys);
@@ -115,25 +108,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppContextValue>(
     () => ({
       ready,
-      session,
       clients,
       projects,
       surveys,
       toast,
       showToast,
-      login: async (email, password) => {
-        if (email.trim().toLowerCase() !== DEMO_USER.email || password !== DEMO_PASSWORD) {
-          return 'Email o contraseña incorrectos.';
-        }
-        const user: User = { ...DEMO_USER };
-        await saveSession(user);
-        setSession(user);
-        return null;
-      },
-      logout: async () => {
-        await clearSession();
-        setSession(null);
-      },
       addClient: async (draft) => {
         const client = await createClient(draft);
         setClients((current) => [client, ...current]);
@@ -184,12 +163,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { client, project };
       },
       startSurvey: async (projectId, serviceType) => {
+        if (!session) {
+          throw new Error('Debes iniciar sesión para crear un levantamiento.');
+        }
         const now = new Date().toISOString();
         const survey: Survey = {
           id: createId('srv'),
           code: nextSurveyCode(surveys),
           projectId,
-          userId: session?.id ?? DEMO_USER.id,
+          userId: session.id,
           serviceType,
           status: 'draft',
           startedAt: now,

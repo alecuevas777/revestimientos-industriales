@@ -12,6 +12,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { WIZARD_STEPS } from '@/constants/labels';
 import { photoCategoriesForService } from '@/constants/options';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { InfoStep } from '@/features/survey/InfoStep';
 import { NotesStep } from '@/features/survey/NotesStep';
 import { ReviewStep } from '@/features/survey/ReviewStep';
@@ -36,7 +37,6 @@ export default function EditSurveyScreen() {
     getSurvey,
     getProject,
     getClient,
-    session,
     saveSurvey,
     addSector,
     duplicateSector,
@@ -46,6 +46,7 @@ export default function EditSurveyScreen() {
     completeSurvey,
     discardSurvey,
   } = useApp();
+  const { session } = useAuth();
   const survey = getSurvey(routeParam(id) ?? '');
   const project = survey ? getProject(survey.projectId) : undefined;
   const client = project ? getClient(project.clientId) : undefined;
@@ -109,7 +110,7 @@ export default function EditSurveyScreen() {
           survey={draft}
           project={project}
           client={client}
-          technician={session?.name ?? 'Técnico Demo'}
+          technician={session?.name ?? 'Técnico'}
           onChange={(visitReason) => void patch({ visitReason })}
         />
       ) : null}
@@ -164,7 +165,7 @@ export default function EditSurveyScreen() {
           survey={draft}
           project={project}
           client={client}
-          technician={session?.name ?? 'Técnico Demo'}
+          technician={session?.name ?? 'Técnico'}
           errors={errors}
         />
       ) : null}

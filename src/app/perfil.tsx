@@ -8,19 +8,23 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { DEMO_USER, WORKER_ROLE } from '@/constants/labels';
+import { WORKER_ROLE } from '@/constants/labels';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { initials } from '@/lib/format';
-import { replace } from '@/lib/nav';
 import { surveysForUser } from '@/lib/selectors';
 
 export default function ProfileScreen() {
-  const { session, logout, resetDemoData, clients, projects, surveys } = useApp();
+  const { resetDemoData, clients, projects, surveys } = useApp();
+  const { session, logout } = useAuth();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
 
-  const worker = session ?? DEMO_USER;
-  const mine = useMemo(() => surveysForUser(worker.id, surveys), [surveys, worker.id]);
+  const worker = session;
+  const mine = useMemo(
+    () => (worker ? surveysForUser(worker.id, surveys) : []),
+    [surveys, worker],
+  );
   const drafts = mine.filter((survey) => survey.status === 'draft').length;
   const completed = mine.filter((survey) => survey.status === 'completed').length;
   const visitedClients = useMemo(() => {
@@ -31,6 +35,10 @@ export default function ProfileScreen() {
     );
     return ids.size;
   }, [mine, projects]);
+
+  if (!worker) {
+    return null;
+  }
 
   return (
     <Screen>
@@ -113,14 +121,13 @@ export default function ProfileScreen() {
       <ConfirmModal
         visible={logoutOpen}
         title="¿Cerrar sesión?"
-        message="Podrás volver a entrar con el usuario demo. Los datos del dispositivo se mantienen."
+        message="Se cierra la sesión de Supabase en este dispositivo. Los clientes y levantamientos guardados aquí se mantienen."
         confirmLabel="Cerrar sesión"
         destructive
         onCancel={() => setLogoutOpen(false)}
         onConfirm={async () => {
           setLogoutOpen(false);
           await logout();
-          replace('/login');
         }}
       />
     </Screen>

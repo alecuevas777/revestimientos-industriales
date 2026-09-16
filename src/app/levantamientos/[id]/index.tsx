@@ -28,6 +28,7 @@ import {
 } from '@/constants/labels';
 import { photoCategoriesForService } from '@/constants/options';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { elementTitle, exposureList, sectorProblemList, surveyHeadline, useList } from '@/lib/display';
 import { formatArea, formatDate, formatTime } from '@/lib/format';
 import { push, routeParam } from '@/lib/nav';
@@ -108,7 +109,8 @@ function SectorBlock({
 
 export default function SurveyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSurvey, getProject, getClient, session } = useApp();
+  const { getSurvey, getProject, getClient } = useApp();
+  const { session } = useAuth();
   const survey = getSurvey(routeParam(id) ?? '');
   const project = survey ? getProject(survey.projectId) : undefined;
   const client = project ? getClient(project.clientId) : undefined;
@@ -156,7 +158,7 @@ export default function SurveyDetailScreen() {
         <Card>
           <InfoRow label="Cliente" value={client?.name} />
           <InfoRow label="Proyecto" value={project?.name} />
-          <InfoRow label="Técnico" value={session?.name ?? 'Técnico Demo'} />
+          <InfoRow label="Técnico" value={session?.name ?? 'Técnico'} />
           <InfoRow label="Fecha" value={formatDate(survey.startedAt)} />
           <InfoRow label="Hora inicio" value={formatTime(survey.startedAt)} />
           <InfoRow label="Hora finalización" value={survey.completedAt ? formatTime(survey.completedAt) : '—'} />

@@ -1,23 +1,22 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
-import { DEMO_PASSWORD, DEMO_USER } from '@/constants/labels';
-import { useApp } from '@/context/AppProvider';
-import { href, replace } from '@/lib/nav';
+import { useAuth } from '@/context/AuthProvider';
+import { href, push } from '@/lib/nav';
 
 export default function LoginScreen() {
-  const { ready, session, login } = useApp();
-  const [email, setEmail] = useState<string>(DEMO_USER.email);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const { session, login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (ready && session) {
+  if (session) {
     return <Redirect href={href('/(tabs)')} />;
   }
 
@@ -27,9 +26,7 @@ export default function LoginScreen() {
     setLoading(false);
     if (message) {
       setError(message);
-      return;
     }
-    replace('/(tabs)');
   }
 
   return (
@@ -50,8 +47,11 @@ export default function LoginScreen() {
               setError('');
             }}
             autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
             keyboardType="email-address"
-            placeholder="tecnico@demo.cl"
+            textContentType="emailAddress"
+            placeholder="tu-email@landes.cl"
           />
           <Input
             label="Contraseña"
@@ -60,19 +60,34 @@ export default function LoginScreen() {
               setPassword(value);
               setError('');
             }}
+            autoComplete="password"
+            textContentType="password"
             secureTextEntry
             placeholder="••••••••"
             error={error}
+            onSubmitEditing={() => {
+              void handleLogin();
+            }}
           />
-          <Button label="Iniciar sesión" onPress={handleLogin} loading={loading} />
+          <Button label="Iniciar sesión" onPress={() => void handleLogin()} loading={loading} />
         </View>
 
-        <Card className="mt-6">
-          <Text className="text-sm font-semibold text-ink">Usuario de demostración</Text>
-          <Text className="mt-1 text-sm text-muted">{DEMO_USER.name}</Text>
-          <Text className="text-sm text-muted">{DEMO_USER.role}</Text>
-          <Text className="text-sm text-muted">{DEMO_USER.email}</Text>
-          <Text className="mt-2 text-sm text-muted">Contraseña: {DEMO_PASSWORD}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => push('/register')}
+          className="mt-6 items-center py-2"
+        >
+          <Text className="text-sm text-muted">
+            ¿No tienes cuenta? <Text className="font-semibold text-brand">Crear cuenta</Text>
+          </Text>
+        </Pressable>
+
+        <Card className="mt-4">
+          <Text className="text-sm font-semibold text-ink">Acceso con Supabase Auth</Text>
+          <Text className="mt-1 text-sm leading-5 text-muted">
+            Si el proyecto pide confirmar email, revisa tu correo antes del primer ingreso. Un usuario
+            inactivo no podrá entrar.
+          </Text>
         </Card>
       </View>
     </Screen>

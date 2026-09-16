@@ -31,6 +31,7 @@ drop table if exists public.perfiles cascade;
 
 drop function if exists public.al_crear_usuario();
 drop function if exists public.set_actualizado_en();
+drop function if exists public.perfiles_proteger_campos();
 
 -- -----------------------------------------------------------------------------
 -- Utilidad: actualizado_en
@@ -57,15 +58,36 @@ create table public.perfiles (
   email text,
   rol text not null default 'tecnico'
     check (rol in ('tecnico', 'supervisor', 'admin')),
+  activo boolean not null default true,
   creado_en timestamptz not null default now(),
   actualizado_en timestamptz not null default now()
 );
 
 create index perfiles_rol_idx on public.perfiles (rol);
+create index perfiles_activo_idx on public.perfiles (activo);
 
 create trigger perfiles_set_actualizado_en
 before update on public.perfiles
 for each row execute function public.set_actualizado_en();
+
+create or replace function public.perfiles_proteger_campos()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null then
+    new.rol := old.rol;
+    new.activo := old.activo;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger perfiles_proteger_campos
+before update on public.perfiles
+for each row execute function public.perfiles_proteger_campos();
 
 create or replace function public.al_crear_usuario()
 returns trigger
@@ -74,12 +96,13 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.perfiles (id, nombre, email, rol)
+  insert into public.perfiles (id, nombre, email, rol, activo)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1), 'Técnico'),
     new.email,
-    coalesce(new.raw_app_meta_data ->> 'role', 'tecnico')
+    coalesce(new.raw_app_meta_data ->> 'role', 'tecnico'),
+    true
   );
   return new;
 end;
@@ -412,4 +435,59 @@ with check (
     select 1 from public.levantamientos l
     where l.id = levantamiento_id and l.usuario_id = (select auth.uid())
   )
+);
+
+-- -----------------------------------------------------------------------------
+-- Storage: bucket privado de fotos
+-- Ruta: fotos/{auth.uid()}/{levantamiento_id}/{archivo}
+-- -----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'fotos',
+  'fotos',
+  false,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists fotos_storage_select on storage.objects;
+drop policy if exists fotos_storage_insert on storage.objects;
+drop policy if exists fotos_storage_update on storage.objects;
+drop policy if exists fotos_storage_delete on storage.objects;
+
+create policy fotos_storage_select
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy fotos_storage_insert
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy fotos_storage_update
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy fotos_storage_delete
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
 );

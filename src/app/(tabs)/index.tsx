@@ -11,13 +11,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProfileButton } from '@/components/ui/ProfileButton';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { DEMO_USER } from '@/constants/labels';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { firstName, greetingForNow } from '@/lib/format';
 import { completedOf, draftsOf, lastProjectSurveyAt, recentProjects, surveysForProject } from '@/lib/selectors';
 
 export default function DashboardScreen() {
-  const { ready, session, clients, projects, surveys } = useApp();
+  const { ready, clients, projects, surveys } = useApp();
+  const { session } = useAuth();
   const drafts = draftsOf(surveys);
   const recent = completedOf(surveys).slice(0, 4);
   const latestProjects = recentProjects(projects, surveys, 3);
@@ -91,7 +92,7 @@ export default function DashboardScreen() {
                 survey={survey}
                 projectName={project?.name}
                 location={project?.city}
-                technician={session?.name ?? DEMO_USER.name}
+                technician={session?.name ?? 'Técnico'}
                 compact
               />
             );

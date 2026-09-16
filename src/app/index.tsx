@@ -2,10 +2,12 @@ import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { href } from '@/lib/nav';
 
 export default function IndexScreen() {
-  const { ready, session } = useApp();
+  const { session } = useAuth();
+  const { ready } = useApp();
 
   if (!ready) {
     return (

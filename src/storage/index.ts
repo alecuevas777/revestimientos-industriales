@@ -5,7 +5,6 @@ import { seedClients, seedProjects, seedSurveys } from '@/data/seed';
 
 import { getClients, saveClients } from './clientStorage';
 import { getProjects, saveProjects } from './projectStorage';
-import { getSession } from './sessionStorage';
 import { getSurveys, saveSurveys } from './surveyStorage';
 
 async function writeSeed() {
@@ -29,14 +28,8 @@ export async function resetDemoData() {
 
 export async function loadAppData() {
   await seedIfNeeded();
-  const [session, clients, projects, surveys] = await Promise.all([
-    getSession(),
-    getClients(),
-    getProjects(),
-    getSurveys(),
-  ]);
-
-  return { session, clients, projects, surveys };
+  const [clients, projects, surveys] = await Promise.all([getClients(), getProjects(), getSurveys()]);
+  return { clients, projects, surveys };
 }
 
 export { archiveClient, createClient, getClients, saveClients, updateClient } from './clientStorage';

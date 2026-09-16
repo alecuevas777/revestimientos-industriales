@@ -1,11 +1,11 @@
 import { Pressable, Text } from 'react-native';
 
-import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { initials } from '@/lib/format';
 import { push } from '@/lib/nav';
 
 export function ProfileButton() {
-  const { session } = useApp();
+  const { session } = useAuth();
 
   return (
     <Pressable

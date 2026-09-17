@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProfileButton } from '@/components/ui/ProfileButton';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { APP_NAME_FULL } from '@/constants/brand';
 import { useApp } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
 import { firstName, greetingForNow } from '@/lib/format';
@@ -44,7 +45,7 @@ export default function DashboardScreen() {
         <View className="flex-1 pr-3">
           <Text className="text-2xl font-bold text-ink">{greetingForNow()},</Text>
           <Text className="text-2xl font-bold text-ink">{firstName(session?.name ?? 'Técnico')}</Text>
-          <Text className="mt-1 text-sm text-muted">Trabajo en terreno · guardado en este dispositivo</Text>
+          <Text className="mt-1 text-sm text-muted">{APP_NAME_FULL}</Text>
         </View>
         <ProfileButton />
       </View>

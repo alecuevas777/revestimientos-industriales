@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import type { User as AuthUser } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
@@ -5,9 +6,8 @@ import { clearSession, saveSession } from '@/storage/sessionStorage';
 import { WORKER_ROLE } from '@/constants/labels';
 import type { User } from '@/types';
 
-export type RegisterResult =
-  | { ok: true; needsEmailConfirmation: boolean }
-  | { ok: false; message: string };
+export type RegisterResult = { ok: true } | { ok: false; message: string };
+export type AuthCallbackKind = 'recovery' | 'session' | 'none';
 
 type ProfileRow = {
   nombre: string | null;
@@ -35,6 +35,12 @@ function mapAuthError(message: string) {
   }
   if (text.includes('signup is disabled') || text.includes('signups not allowed')) {
     return 'El registro está desactivado en Authentication → Providers → Email.';
+  }
+  if (text.includes('same password') || text.includes('should be different')) {
+    return 'La nueva contraseña debe ser distinta a la anterior.';
+  }
+  if (text.includes('otp') || text.includes('token has expired') || text.includes('invalid token')) {
+    return 'El código es inválido o expiró. Solicita uno nuevo.';
   }
   if (text.includes('rate limit') || text.includes('too many requests')) {
     return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
@@ -130,13 +136,11 @@ export async function signUpWithPassword(input: {
 
   if (!data.user) return { ok: false, message: 'No se pudo crear la cuenta.' };
 
-  if (data.session?.user) {
-    const result = await persistProfile(data.session.user);
-    if (typeof result === 'string') return { ok: false, message: result };
-    return { ok: true, needsEmailConfirmation: false };
+  if (data.session) {
+    await supabase.auth.signOut();
   }
-
-  return { ok: true, needsEmailConfirmation: true };
+  await clearSession();
+  return { ok: true };
 }
 
 export async function signOutAuth() {
@@ -153,4 +157,106 @@ export async function restoreAuthSession(): Promise<User | null> {
 
   const result = await persistProfile(data.session.user);
   return typeof result === 'string' ? null : result;
+}
+
+export function passwordResetRedirectUrl() {
+  return Linking.createURL('reset-password');
+}
+
+function firstParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function paramsFromAuthUrl(url: string) {
+  const parsed = Linking.parse(url);
+  const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
+  const hashParams = new URLSearchParams(hash);
+  const query = parsed.queryParams ?? {};
+
+  const read = (key: string) => hashParams.get(key) || firstParam(query[key] as string | string[] | undefined) || '';
+
+  return {
+    type: read('type'),
+    access_token: read('access_token'),
+    refresh_token: read('refresh_token'),
+    token_hash: read('token_hash'),
+    code: read('code'),
+    error: read('error_description') || read('error'),
+  };
+}
+
+export async function consumeAuthCallback(url: string): Promise<AuthCallbackKind | { error: string }> {
+  const params = paramsFromAuthUrl(url);
+  if (params.error) return { error: mapAuthError(params.error) };
+
+  if (params.token_hash) {
+    const type = params.type === 'recovery' ? 'recovery' : 'email';
+    const { error } = await supabase.auth.verifyOtp({ token_hash: params.token_hash, type });
+    if (error) return { error: mapAuthError(error.message) };
+    return params.type === 'recovery' ? 'recovery' : 'session';
+  }
+
+  if (params.code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(params.code);
+    if (error) return { error: mapAuthError(error.message) };
+    return params.type === 'recovery' ? 'recovery' : 'session';
+  }
+
+  if (params.access_token && params.refresh_token) {
+    const { error } = await supabase.auth.setSession({
+      access_token: params.access_token,
+      refresh_token: params.refresh_token,
+    });
+    if (error) return { error: mapAuthError(error.message) };
+    return params.type === 'recovery' ? 'recovery' : 'session';
+  }
+
+  return 'none';
+}
+
+export async function requestPasswordReset(email: string): Promise<string | null> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed.includes('@')) return 'Ingresa un email válido.';
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmed);
+  if (error) return mapAuthError(error.message);
+  return null;
+}
+
+export async function resetPasswordWithCode(input: {
+  email: string;
+  token: string;
+  password: string;
+}): Promise<string | null> {
+  const email = input.email.trim().toLowerCase();
+  const token = input.token.replace(/\s/g, '');
+  const password = input.password;
+
+  if (!email.includes('@')) return 'Ingresa un email válido.';
+  if (token.length < 6) return 'Ingresa el código de 6 dígitos del correo.';
+  if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
+  });
+  if (error) return mapAuthError(error.message);
+
+  const { error: updateError } = await supabase.auth.updateUser({ password });
+  if (updateError) return mapAuthError(updateError.message);
+
+  await signOutAuth();
+  return null;
+}
+
+export async function updatePassword(password: string): Promise<string | null> {
+  if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return mapAuthError(error.message);
+
+  await signOutAuth();
+  return null;
 }

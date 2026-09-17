@@ -2,10 +2,12 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { AuthBrandHeader } from '@/components/AuthBrandHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
+import { APP_EMAIL_PLACEHOLDER } from '@/constants/brand';
 import { useAuth } from '@/context/AuthProvider';
 import { href, replace } from '@/lib/nav';
 
@@ -16,16 +18,10 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (session) {
     return <Redirect href={href('/(tabs)')} />;
-  }
-
-  function clearMessages() {
-    setError('');
-    setNotice('');
   }
 
   async function handleRegister() {
@@ -43,19 +39,16 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (result.needsEmailConfirmation) {
-      setNotice('Cuenta creada. Revisa tu email para confirmar y después inicia sesión.');
-    }
+    replace('/login?registered=1');
   }
 
   return (
     <Screen>
       <View className="flex-1 justify-center py-8">
-        <Text className="text-sm font-semibold uppercase tracking-[2px] text-brand">Registro</Text>
-        <Text className="mt-2 text-3xl font-bold text-ink">Crear cuenta técnica</Text>
-        <Text className="mt-2 text-base leading-6 text-muted">
-          El perfil se crea al registrarte. Quedas como técnico de terreno.
-        </Text>
+        <AuthBrandHeader
+          title="Crear cuenta técnica"
+          subtitle="El perfil se crea al registrarte. Quedas como técnico de terreno."
+        />
 
         <View className="mt-8 gap-4">
           <Input
@@ -63,7 +56,7 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={(value) => {
               setName(value);
-              clearMessages();
+              setError('');
             }}
             autoCapitalize="words"
             autoComplete="name"
@@ -75,21 +68,21 @@ export default function RegisterScreen() {
             value={email}
             onChangeText={(value) => {
               setEmail(value);
-              clearMessages();
+              setError('');
             }}
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
             keyboardType="email-address"
             textContentType="emailAddress"
-            placeholder="tu-email@landes.cl"
+            placeholder={APP_EMAIL_PLACEHOLDER}
           />
           <Input
             label="Contraseña"
             value={password}
             onChangeText={(value) => {
               setPassword(value);
-              clearMessages();
+              setError('');
             }}
             autoComplete="new-password"
             textContentType="newPassword"
@@ -101,7 +94,7 @@ export default function RegisterScreen() {
             value={confirm}
             onChangeText={(value) => {
               setConfirm(value);
-              clearMessages();
+              setError('');
             }}
             autoComplete="new-password"
             textContentType="newPassword"
@@ -109,18 +102,7 @@ export default function RegisterScreen() {
             placeholder="Repite la contraseña"
             error={error}
           />
-          {notice ? <Text className="text-sm leading-5 text-brand">{notice}</Text> : null}
-          <Button
-            label={notice ? 'Ir a iniciar sesión' : 'Crear cuenta'}
-            onPress={() => {
-              if (notice) {
-                replace('/login');
-                return;
-              }
-              void handleRegister();
-            }}
-            loading={loading}
-          />
+          <Button label="Crear cuenta" onPress={() => void handleRegister()} loading={loading} />
         </View>
 
         <Pressable
@@ -134,10 +116,9 @@ export default function RegisterScreen() {
         </Pressable>
 
         <Card className="mt-4">
-          <Text className="text-sm font-semibold text-ink">Confirmación de email</Text>
+          <Text className="text-sm font-semibold text-ink">Después del registro</Text>
           <Text className="mt-1 text-sm leading-5 text-muted">
-            Si Auth pide confirmar el correo, no entrarás hasta abrirlo. En Authentication → Providers
-            → Email debe estar activo “Allow new users to sign up”.
+            Al crear la cuenta volverás a iniciar sesión con tu email y contraseña.
           </Text>
         </Card>
       </View>

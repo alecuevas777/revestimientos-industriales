@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 type Props = {
@@ -45,7 +47,7 @@ export function Button({
       disabled={isDisabled}
       className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl px-4 ${variants[variant]} ${isDisabled ? 'opacity-50' : 'active:opacity-80'} ${className ?? ''}`}
     >
-      {loading ? <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : '#1D4ED8'} /> : icon}
+      {loading ? <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#FFFFFF' : Colors.brand} /> : icon}
       <Text className={`text-base font-semibold ${labels[variant]}`}>{label}</Text>
     </Pressable>
   );

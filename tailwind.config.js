@@ -5,14 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        canvas: '#F3F5F7',
-        ink: '#111827',
+        canvas: '#F5F5F5',
+        ink: '#121212',
         muted: '#6B7280',
-        line: '#E5E7EB',
+        line: '#E5E5E5',
         brand: {
-          DEFAULT: '#1D4ED8',
-          dark: '#1E3A8A',
-          light: '#DBEAFE',
+          DEFAULT: '#F96706',
+          dark: '#121212',
+          light: '#FFE8D6',
         },
         success: {
           DEFAULT: '#059669',

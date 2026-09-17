@@ -99,7 +99,7 @@ export default function ProfileScreen() {
       <View className="mt-8 gap-3 pb-4">
         <Text className="text-xs font-semibold uppercase tracking-wide text-muted">Aplicación</Text>
         <Text className="text-sm leading-5 text-muted">
-          Modo demo local. Los datos quedan en este dispositivo y los levantamientos se asocian a tu usuario.
+          VICAST. Los datos de clientes, proyectos y levantamientos siguen en este dispositivo.
         </Text>
         <Button label="Restablecer datos demo" variant="ghost" onPress={() => setResetOpen(true)} />
         <Button label="Cerrar sesión" variant="danger" onPress={() => setLogoutOpen(true)} />

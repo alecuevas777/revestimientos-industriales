@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Revestimientos Industriales",
-    "slug": "revestimientos-industriales",
+    "name": "VICAST",
+    "slug": "vicast",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "revestimientosindustriales",
+    "scheme": "vicast",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#121212",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -22,23 +22,25 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "VICAST · Levantamientos",
+      "shortName": "VICAST"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1D4ED8",
+          "backgroundColor": "#121212",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 220
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Necesitamos acceso a tus fotos para el registro fotográfico del levantamiento.",
-          "cameraPermission": "Necesitamos la cámara para documentar superficies en terreno."
+          "photosPermission": "VICAST necesita acceso a tus fotos para el registro fotográfico del levantamiento.",
+          "cameraPermission": "VICAST necesita la cámara para documentar superficies en terreno."
         }
       ],
       "expo-sqlite"

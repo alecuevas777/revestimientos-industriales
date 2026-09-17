@@ -1,15 +1,13 @@
-# Revestimientos Industriales
+# VICAST · Levantamientos
 
-MVP móvil para levantamientos técnicos de superficies. Todo corre en el dispositivo: Expo, TypeScript, NativeWind y AsyncStorage.
+App móvil de VICAST para levantamientos técnicos de superficies. Expo, TypeScript, NativeWind y Supabase Auth.
 
 ## Arranque
 
 ```bash
 npm install
-npx expo start
+npx expo start --clear
 ```
-
-Usuario demo: `tecnico@demo.cl` / `demo1234`
 
 ## Flujo
 

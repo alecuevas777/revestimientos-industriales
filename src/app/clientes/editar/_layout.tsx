@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 
-export default function EditClientLayout() {
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F3F5F7' } }} />;
+import { Colors } from '@/constants/theme';
+
+export default function ClientsEditLayout() {
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.canvas } }} />;
 }

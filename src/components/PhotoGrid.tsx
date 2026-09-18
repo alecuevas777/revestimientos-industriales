@@ -1,14 +1,16 @@
-import { Image } from 'expo-image';
-import { Camera, ImagePlus, Trash2, X } from 'lucide-react-native';
+import { Camera, CloudOff, ImagePlus, RotateCcw, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SurveyPhoto } from '@/components/SurveyPhoto';
 import { Button } from '@/components/ui/Button';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { PHOTO_CATEGORY_LABELS } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
+import { useAppActions } from '@/context/AppProvider';
 import { pickFromLibrary, takePhoto } from '@/lib/pickPhoto';
+import { photoUploadStatus } from '@/lib/survey';
 import type { PhotoCategory, PhotoEvidence, SurveySector } from '@/types';
 
 type CategoryOption = { value: PhotoCategory; label: string };
@@ -27,6 +29,40 @@ const DEFAULT_CATEGORIES = Object.entries(PHOTO_CATEGORY_LABELS).map(([value, la
   value: value as PhotoCategory,
   label,
 }));
+
+function PhotoSyncBadge({ photo }: { photo: PhotoEvidence }) {
+  const { retryPhotoUpload } = useAppActions();
+  const status = photoUploadStatus(photo);
+  if (status === 'ready') return null;
+
+  if (status === 'uploading') {
+    return (
+      <View className="absolute bottom-2 left-2 flex-row items-center gap-1 rounded-full bg-ink/80 px-2 py-1">
+        <ActivityIndicator size="small" color="#fff" />
+        <Text className="text-[10px] font-semibold text-white">Subiendo</Text>
+      </View>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <Pressable
+        onPress={() => retryPhotoUpload(photo.surveyId, photo.id)}
+        className="absolute bottom-2 left-2 flex-row items-center gap-1 rounded-full bg-danger px-2 py-1"
+      >
+        <RotateCcw size={12} color="#fff" />
+        <Text className="text-[10px] font-semibold text-white">Reintentar</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View className="absolute bottom-2 left-2 flex-row items-center gap-1 rounded-full bg-ink/70 px-2 py-1">
+      <CloudOff size={12} color="#fff" />
+      <Text className="text-[10px] font-semibold text-white">En el dispositivo</Text>
+    </View>
+  );
+}
 
 export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, editable, onAdd, onUpdate, onRemove }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -70,13 +106,10 @@ export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, ed
               onPress={() => setOpenId(photo.id)}
               className="w-[48%] overflow-hidden rounded-2xl border border-line bg-white"
             >
-              {photo.uri ? (
-                <Image source={{ uri: photo.uri }} style={{ width: '100%', height: 120 }} contentFit="cover" />
-              ) : (
-                <View className="h-[120px] items-center justify-center bg-line">
-                  <Camera size={20} color={Colors.muted} />
-                </View>
-              )}
+              <View>
+                <SurveyPhoto photo={photo} style={{ width: '100%', height: 120 }} contentFit="cover" />
+                <PhotoSyncBadge photo={photo} />
+              </View>
               <View className="px-3 py-2">
                 <Text className="text-xs font-semibold text-ink">Foto {String(index + 1).padStart(2, '0')}</Text>
                 <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>
@@ -98,8 +131,8 @@ export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, ed
           </View>
           {selected ? (
             <View className="flex-1">
-              {selected.uri ? (
-                <Image source={{ uri: selected.uri }} style={{ flex: 1 }} contentFit="contain" />
+              {selected.uri || selected.storagePath ? (
+                <SurveyPhoto photo={selected} style={{ flex: 1 }} contentFit="contain" />
               ) : (
                 <View className="flex-1 items-center justify-center">
                   <Camera size={28} color="#9CA3AF" />

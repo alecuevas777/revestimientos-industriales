@@ -9,6 +9,7 @@ import { AuthField } from '@/components/auth/AuthField';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { useAuth } from '@/context/AuthProvider';
+import { useActionLock } from '@/hooks/useActionLock';
 import { href, push } from '@/lib/nav';
 
 export default function LoginScreen() {
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const run = useActionLock();
 
   useEffect(() => {
     void AsyncStorage.getItem(STORAGE_KEYS.rememberEmail).then((value) => {
@@ -36,20 +38,27 @@ export default function LoginScreen() {
   }
 
   async function handleLogin() {
-    setLoading(true);
-    const message = await login(email, password);
-    setLoading(false);
-    if (message) {
-      setError(message);
-      return;
-    }
+    await run(async () => {
+      setLoading(true);
+      try {
+        const message = await login(email, password);
+        if (message) {
+          setError(message);
+          return;
+        }
 
-    const trimmed = email.trim().toLowerCase();
-    if (remember) {
-      await AsyncStorage.setItem(STORAGE_KEYS.rememberEmail, trimmed);
-    } else {
-      await AsyncStorage.removeItem(STORAGE_KEYS.rememberEmail);
-    }
+        const trimmed = email.trim().toLowerCase();
+        if (remember) {
+          await AsyncStorage.setItem(STORAGE_KEYS.rememberEmail, trimmed);
+        } else {
+          await AsyncStorage.removeItem(STORAGE_KEYS.rememberEmail);
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'No se pudo iniciar sesión.');
+      } finally {
+        setLoading(false);
+      }
+    });
   }
 
   return (

@@ -8,6 +8,7 @@ import { AuthField } from '@/components/auth/AuthField';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { APP_WEBSITE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthProvider';
+import { useActionLock } from '@/hooks/useActionLock';
 import { href, replace } from '@/lib/nav';
 
 export default function RegisterScreen() {
@@ -19,6 +20,7 @@ export default function RegisterScreen() {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const run = useActionLock();
 
   if (session) {
     return <Redirect href={href('/(tabs)')} />;
@@ -29,21 +31,30 @@ export default function RegisterScreen() {
       setError('Debes aceptar los términos y condiciones.');
       return;
     }
+    if (password.length < 6) {
+      setError('La contraseña debe tener mínimo 6 caracteres.');
+      return;
+    }
     if (password !== confirm) {
       setError('Las contraseñas no coinciden.');
       return;
     }
 
-    setLoading(true);
-    const result = await register({ name, email, password });
-    setLoading(false);
-
-    if (!result.ok) {
-      setError(result.message);
-      return;
-    }
-
-    replace('/login?registered=1');
+    await run(async () => {
+      setLoading(true);
+      try {
+        const result = await register({ name, email, password });
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
+        replace('/login?registered=1');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'No se pudo crear la cuenta.');
+      } finally {
+        setLoading(false);
+      }
+    });
   }
 
   return (
@@ -90,6 +101,7 @@ export default function RegisterScreen() {
           autoComplete="new-password"
           textContentType="newPassword"
           placeholder="Contraseña"
+          hint="La contraseña debe tener mínimo 6 caracteres."
         />
         <AuthField
           icon={Lock}

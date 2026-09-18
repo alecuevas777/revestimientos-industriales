@@ -1,18 +1,38 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Colors } from '@/constants/theme';
 
 type Props = {
   children: ReactNode;
   scroll?: boolean;
   padded?: boolean;
   bottomSafe?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
-export function Screen({ children, scroll = true, padded = true, bottomSafe = true }: Props) {
+export function Screen({
+  children,
+  scroll = true,
+  padded = true,
+  bottomSafe = true,
+  refreshing = false,
+  onRefresh,
+}: Props) {
   const content = (
     <View className={`flex-1 ${padded ? 'px-5 py-4' : ''}`}>{children}</View>
   );
+
+  const refreshControl = onRefresh ? (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={Colors.brand}
+      colors={[Colors.brand]}
+    />
+  ) : undefined;
 
   return (
     <SafeAreaView
@@ -30,6 +50,7 @@ export function Screen({ children, scroll = true, padded = true, bottomSafe = tr
             contentContainerClassName={bottomSafe ? 'grow pb-6' : 'grow pb-24'}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            refreshControl={refreshControl}
           >
             {content}
           </ScrollView>

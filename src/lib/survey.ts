@@ -1,7 +1,8 @@
 import { WIZARD_STEPS } from '@/constants/labels';
 import { isFloorService, usesElements } from '@/constants/options';
+import { isUuid } from '@/lib/id';
 import { surveyArea } from '@/lib/service';
-import type { PhotoEvidence, Severity, Survey, SurveyElement, SurveySector } from '@/types';
+import type { PhotoEvidence, PhotoUploadStatus, Severity, Survey, SurveyElement, SurveySector } from '@/types';
 
 const SEVERITY_RANK: Record<Severity, number> = {
   low: 1,
@@ -32,6 +33,108 @@ export function collectPhotos(survey: Survey): PhotoEvidence[] {
       ...sector.elements.flatMap((element) => element.photos),
     ]),
   ];
+}
+
+function mapSurveyPhotos(survey: Survey, mapPhoto: (photo: PhotoEvidence) => PhotoEvidence): Survey {
+  return {
+    ...survey,
+    photos: survey.photos.map(mapPhoto),
+    sectors: survey.sectors.map((sector) => ({
+      ...sector,
+      photos: sector.photos.map(mapPhoto),
+      elements: sector.elements.map((element) => ({
+        ...element,
+        photos: element.photos.map(mapPhoto),
+      })),
+    })),
+  };
+}
+
+export function photoUploadStatus(photo: PhotoEvidence): PhotoUploadStatus {
+  if (photo.storagePath) return 'ready';
+  if (photo.uploadStatus === 'uploading' || photo.uploadStatus === 'error') return photo.uploadStatus;
+  if (!photo.uri || photo.uri.startsWith('http')) return 'ready';
+  return 'pending';
+}
+
+export function needsPhotoUpload(photo: PhotoEvidence) {
+  const status = photoUploadStatus(photo);
+  return status === 'pending' || status === 'error';
+}
+
+export function patchSurveyPhoto(survey: Survey, photoId: string, patch: Partial<PhotoEvidence>): Survey {
+  return mapSurveyPhotos(survey, (photo) => (photo.id === photoId ? { ...photo, ...patch } : photo));
+}
+
+function mergePhoto(next: PhotoEvidence, previous?: PhotoEvidence): PhotoEvidence {
+  if (!previous) return { ...next, uploadStatus: photoUploadStatus(next) };
+  const storagePath = next.storagePath || previous.storagePath;
+  const uri = next.uri || previous.uri;
+  if (storagePath) {
+    return { ...next, storagePath, uri, uploadStatus: 'ready' };
+  }
+  const uploadStatus: PhotoUploadStatus =
+    next.uploadStatus === 'uploading' || (next.uploadStatus == null && previous.uploadStatus === 'uploading')
+      ? 'uploading'
+      : next.uploadStatus === 'error'
+        ? 'error'
+        : next.uploadStatus === 'pending'
+          ? 'pending'
+          : previous.uploadStatus === 'error'
+            ? 'error'
+            : photoUploadStatus({ ...next, storagePath, uri });
+  return { ...next, storagePath, uri, uploadStatus };
+}
+
+export function mergeRemotePhotoPaths(next: Survey, existing: Survey): Survey {
+  const existingById = new Map(collectPhotos(existing).map((photo) => [photo.id, photo]));
+  return mapSurveyPhotos(next, (photo) => mergePhoto(photo, existingById.get(photo.id)));
+}
+
+export function applyPersistedSurvey(local: Survey | undefined, persisted: Survey): Survey {
+  if (!local) return persisted;
+  if (persisted.updatedAt >= local.updatedAt) return mergeRemotePhotoPaths(persisted, local);
+  return { ...mergeRemotePhotoPaths(local, persisted), code: persisted.code };
+}
+
+export type RemovedSurveyChildren = {
+  sectorIds: string[];
+  elementIds: string[];
+  photos: { id: string; storagePath?: string }[];
+};
+
+export const EMPTY_REMOVED_CHILDREN: RemovedSurveyChildren = {
+  sectorIds: [],
+  elementIds: [],
+  photos: [],
+};
+
+export function removedSurveyChildren(previous: Survey | undefined, next: Survey): RemovedSurveyChildren {
+  if (!previous) return EMPTY_REMOVED_CHILDREN;
+  const nextSectors = new Set(next.sectors.map((item) => item.id));
+  const nextElements = new Set(collectElements(next).map((item) => item.id));
+  const nextPhotos = new Set(collectPhotos(next).map((item) => item.id));
+  return {
+    sectorIds: previous.sectors.filter((item) => isUuid(item.id) && !nextSectors.has(item.id)).map((item) => item.id),
+    elementIds: collectElements(previous)
+      .filter((item) => isUuid(item.id) && !nextElements.has(item.id))
+      .map((item) => item.id),
+    photos: collectPhotos(previous)
+      .filter((item) => isUuid(item.id) && !nextPhotos.has(item.id))
+      .map((item) => ({ id: item.id, storagePath: item.storagePath })),
+  };
+}
+
+export function mergeRemovedChildren(current: RemovedSurveyChildren, extra: RemovedSurveyChildren): RemovedSurveyChildren {
+  return {
+    sectorIds: [...new Set([...current.sectorIds, ...extra.sectorIds])],
+    elementIds: [...new Set([...current.elementIds, ...extra.elementIds])],
+    photos: [...current.photos, ...extra.photos.filter((photo) => !current.photos.some((item) => item.id === photo.id))],
+  };
+}
+
+export function hasRemovedChildren(removed: RemovedSurveyChildren) {
+  return removed.sectorIds.length > 0 || removed.elementIds.length > 0 || removed.photos.length > 0;
 }
 
 export function collectPhotoUris(survey: Survey) {

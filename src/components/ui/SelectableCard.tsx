@@ -1,4 +1,7 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+
+import { QuietPressable } from '@/components/ui/QuietPressable';
+import { Colors } from '@/constants/theme';
 
 type Props = {
   title: string;
@@ -9,9 +12,18 @@ type Props = {
 
 export function SelectableCard({ title, description, selected, onPress }: Props) {
   return (
-    <Pressable
+    <QuietPressable
       onPress={onPress}
-      className={`min-h-[72px] flex-1 rounded-2xl border-2 px-4 py-4 ${selected ? 'border-brand bg-brand-light' : 'border-line bg-white'}`}
+      style={{
+        minHeight: 72,
+        flex: 1,
+        borderRadius: 16,
+        borderWidth: 2,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: selected ? Colors.brandLight : Colors.card,
+        borderColor: selected ? Colors.brand : Colors.line,
+      }}
     >
       <View className="flex-row items-center gap-3">
         <View
@@ -26,6 +38,6 @@ export function SelectableCard({ title, description, selected, onPress }: Props)
           {description ? <Text className="mt-1 text-sm text-muted">{description}</Text> : null}
         </View>
       </View>
-    </Pressable>
+    </QuietPressable>
   );
 }

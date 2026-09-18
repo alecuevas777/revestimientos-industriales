@@ -55,3 +55,59 @@ export function recentProjects(projects: Project[], surveys: Survey[], limit = 3
     })
     .slice(0, limit);
 }
+
+export function indexById<T extends { id: string }>(items: T[]) {
+  return new Map(items.map((item) => [item.id, item]));
+}
+
+export function projectCountByClientId(projects: Project[]) {
+  const counts = new Map<string, number>();
+  for (const project of projects) {
+    counts.set(project.clientId, (counts.get(project.clientId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function surveyCountByProjectId(surveys: Survey[]) {
+  const counts = new Map<string, number>();
+  for (const survey of surveys) {
+    counts.set(survey.projectId, (counts.get(survey.projectId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function surveyCountByClientId(projects: Project[], surveys: Survey[]) {
+  const byProject = surveyCountByProjectId(surveys);
+  const counts = new Map<string, number>();
+  for (const project of projects) {
+    counts.set(project.clientId, (counts.get(project.clientId) ?? 0) + (byProject.get(project.id) ?? 0));
+  }
+  return counts;
+}
+
+export function lastActivityByClientId(clients: Client[], projects: Project[], surveys: Survey[]) {
+  const last = new Map<string, string>();
+  for (const client of clients) last.set(client.id, client.updatedAt);
+  for (const project of projects) {
+    const prev = last.get(project.clientId);
+    if (!prev || project.updatedAt > prev) last.set(project.clientId, project.updatedAt);
+  }
+  const projectClient = new Map(projects.map((project) => [project.id, project.clientId]));
+  for (const survey of surveys) {
+    const clientId = projectClient.get(survey.projectId);
+    if (!clientId) continue;
+    const prev = last.get(clientId);
+    if (!prev || survey.updatedAt > prev) last.set(clientId, survey.updatedAt);
+  }
+  return last;
+}
+
+export function lastSurveyAtByProjectId(surveys: Survey[]) {
+  const last = new Map<string, string>();
+  for (const survey of surveys) {
+    const at = survey.completedAt ?? survey.updatedAt;
+    const prev = last.get(survey.projectId);
+    if (!prev || at > prev) last.set(survey.projectId, at);
+  }
+  return last;
+}

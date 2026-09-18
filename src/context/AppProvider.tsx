@@ -1,24 +1,28 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 
 import { useAuth } from '@/context/AuthProvider';
 import { createId } from '@/lib/id';
-import { cloneSectorFields, collectPhotos, nextSurveyCode } from '@/lib/survey';
-import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
+import { shouldSkipHydrate } from '@/lib/hydrateGate';
+import { applyPersistedSurvey, cloneSectorFields, collectPhotos, mergeRemotePhotoPaths, nextSurveyCode, patchSurveyPhoto, removedSurveyChildren } from '@/lib/survey';
+import { clearRemovedChildren, noteRemovedChildren, peekRemovedChildren } from '@/lib/surveyDeletes';
 import { emptyServiceData } from '@/lib/service';
 import {
-  archiveClient as archiveClientRecord,
-  createClient,
-  createProject,
-  deleteSurvey,
-  emptyElement,
-  emptySector,
-  loadAppData,
-  resetDemoData as resetStoredDemo,
-  updateClient,
-  updateProject,
-  upsertSurvey,
-} from '@/storage';
+  hydrateWorkspace,
+  persistClient,
+  persistProject,
+  persistSurvey,
+  removeSurvey,
+} from '@/repositories/workspace';
+import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
+import {
+  bindPhotoUploader,
+  cancelPhotoUpload,
+  enqueuePendingPhotos,
+  enqueuePhotoUpload,
+  resetPhotoUploadQueue,
+} from '@/services/photoUploadQueue';
+import { emptyElement, emptySector } from '@/storage';
 import type {
   Client,
   ClientDraft,
@@ -32,13 +36,18 @@ import type {
   SurveySector,
 } from '@/types';
 
-type AppContextValue = {
+type AppDataValue = {
   ready: boolean;
+  refreshing: boolean;
   clients: Client[];
   projects: Project[];
   surveys: Survey[];
   toast: string | null;
+};
+
+type AppActionsValue = {
   showToast: (message: string) => void;
+  refreshWorkspace: () => Promise<void>;
   addClient: (draft: ClientDraft) => Promise<Client>;
   editClient: (id: string, draft: ClientDraft) => Promise<Client | null>;
   archiveClient: (id: string) => Promise<void>;
@@ -46,15 +55,16 @@ type AppContextValue = {
   editProject: (id: string, draft: ProjectDraft) => Promise<Project | null>;
   ensureClientAndProject: (setup: ClientProjectSetup) => Promise<{ client: Client; project: Project }>;
   startSurvey: (projectId: string, serviceType: ServiceType) => Promise<Survey>;
-  saveSurvey: (survey: Survey, silent?: boolean) => Promise<Survey>;
+  saveSurvey: (survey: Pick<Survey, 'id'> & Partial<Survey>, silent?: boolean) => Promise<Survey>;
   completeSurvey: (id: string) => Promise<Survey | null>;
+  reopenSurvey: (id: string) => Promise<Survey | null>;
   discardSurvey: (id: string) => Promise<void>;
   addSector: (surveyId: string) => Promise<SurveySector | null>;
-  saveSector: (surveyId: string, sector: SurveySector) => Promise<void>;
+  saveSector: (surveyId: string, sector: Pick<SurveySector, 'id'> & Partial<SurveySector>) => Promise<void>;
   duplicateSector: (surveyId: string, sectorId: string) => Promise<SurveySector | null>;
   removeSector: (surveyId: string, sectorId: string) => Promise<void>;
   addElement: (surveyId: string, sectorId: string) => Promise<SurveyElement | null>;
-  saveElement: (surveyId: string, element: SurveyElement) => Promise<void>;
+  saveElement: (surveyId: string, element: Pick<SurveyElement, 'id'> & Partial<SurveyElement>) => Promise<void>;
   removeElement: (surveyId: string, elementId: string) => Promise<void>;
   addPhoto: (input: {
     surveyId: string;
@@ -65,113 +75,350 @@ type AppContextValue = {
   }) => Promise<PhotoEvidence | null>;
   updatePhoto: (surveyId: string, photoId: string, patch: Partial<PhotoEvidence>) => Promise<void>;
   removePhoto: (surveyId: string, photoId: string) => Promise<void>;
-  resetDemoData: () => Promise<void>;
+  retryPhotoUpload: (surveyId: string, photoId: string) => void;
   getClient: (id: string) => Client | undefined;
   getProject: (id: string) => Project | undefined;
   getSurvey: (id: string) => Survey | undefined;
 };
 
-const AppContext = createContext<AppContextValue | null>(null);
+type AppContextValue = AppDataValue & AppActionsValue;
+
+const AppDataContext = createContext<AppDataValue | null>(null);
+const AppActionsContext = createContext<AppActionsValue | null>(null);
+
+const APP_ACTION_KEYS: (keyof AppActionsValue)[] = [
+  'showToast',
+  'refreshWorkspace',
+  'addClient',
+  'editClient',
+  'archiveClient',
+  'addProject',
+  'editProject',
+  'ensureClientAndProject',
+  'startSurvey',
+  'saveSurvey',
+  'completeSurvey',
+  'reopenSurvey',
+  'discardSurvey',
+  'addSector',
+  'saveSector',
+  'duplicateSector',
+  'removeSector',
+  'addElement',
+  'saveElement',
+  'removeElement',
+  'addPhoto',
+  'updatePhoto',
+  'removePhoto',
+  'retryPhotoUpload',
+  'getClient',
+  'getProject',
+  'getSurvey',
+];
+
+function savedToast(synced: boolean, online = 'Guardado') {
+  return synced ? online : 'Guardado en este dispositivo';
+}
+
+function buildClient(draft: ClientDraft): Client {
+  const now = new Date().toISOString();
+  return {
+    ...draft,
+    id: createId(),
+    archived: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function buildProject(draft: ProjectDraft): Project {
+  const now = new Date().toISOString();
+  return {
+    ...draft,
+    id: createId(),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const [ready, setReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const surveysRef = useRef<Survey[]>([]);
+  const clientsRef = useRef<Client[]>([]);
+  const projectsRef = useRef<Project[]>([]);
+  const sessionRef = useRef(session);
+  const hydratingRef = useRef(false);
+  const pendingHydrateRef = useRef(false);
+  const persistTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const persistChains = useRef(new Map<string, Promise<void>>());
+  const pendingRemote = useRef(new Set<string>());
+  const cancelledSurveys = useRef(new Set<string>());
+  const hydrateRef = useRef<(userId: string, mode: 'splash' | 'silent' | 'pull') => Promise<void>>(async () => {});
+  const flushAllRef = useRef<() => Promise<void>>(async () => {});
+  const actionsRef = useRef<AppActionsValue>(null!);
   surveysRef.current = surveys;
+  clientsRef.current = clients;
+  projectsRef.current = projects;
+  sessionRef.current = session;
 
   useEffect(() => {
-    loadAppData()
-      .then((data) => {
-        setClients(data.clients);
-        setProjects(data.projects);
-        setSurveys(data.surveys);
-      })
-      .finally(() => setReady(true));
-  }, []);
+    if (!session) {
+      persistTimers.current.forEach((timer) => clearTimeout(timer));
+      persistTimers.current.clear();
+      pendingRemote.current.clear();
+      resetPhotoUploadQueue();
+      setClients([]);
+      setProjects([]);
+      setSurveys([]);
+      setRefreshing(false);
+      setReady(true);
+      return;
+    }
+
+    const userId = session.id;
+    void hydrateRef.current(userId, 'splash');
+
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        void flushAllRef.current();
+        return;
+      }
+      if (state === 'active') {
+        void hydrateRef.current(userId, 'silent');
+      }
+    });
+
+    return () => {
+      appState.remove();
+    };
+  }, [session?.id]);
 
   function showToast(message: string) {
     setToast(message);
     setTimeout(() => setToast(null), 2200);
   }
 
+  function requireUserId() {
+    const current = sessionRef.current;
+    if (!current) {
+      throw new Error('Debes iniciar sesión para guardar datos.');
+    }
+    return current.id;
+  }
+
   function replaceSurvey(next: Survey) {
     setSurveys((current) => {
-      const exists = current.some((item) => item.id === next.id);
-      return exists ? current.map((item) => (item.id === next.id ? next : item)) : [next, ...current];
+      const existing = current.find((item) => item.id === next.id);
+      const merged = existing ? mergeRemotePhotoPaths(next, existing) : next;
+      const list = existing ? current.map((item) => (item.id === next.id ? merged : item)) : [merged, ...current];
+      surveysRef.current = list;
+      return list;
     });
   }
 
-  const value = useMemo<AppContextValue>(
-    () => ({
-      ready,
-      clients,
-      projects,
-      surveys,
-      toast,
+  function applyPhotoPatch(surveyId: string, photoId: string, patch: Partial<PhotoEvidence>) {
+    const current = surveysRef.current.find((item) => item.id === surveyId);
+    if (!current) return;
+    const next = patchSurveyPhoto(current, photoId, patch);
+    replaceSurvey(next);
+    const userId = sessionRef.current?.id;
+    if (userId) void persistSurvey(userId, surveysRef.current.find((item) => item.id === surveyId) ?? next, { remote: false });
+  }
+
+  bindPhotoUploader({
+    getUserId: () => sessionRef.current?.id,
+    getPhoto: (surveyId, photoId) => {
+      const survey = surveysRef.current.find((item) => item.id === surveyId);
+      return survey ? collectPhotos(survey).find((photo) => photo.id === photoId) : undefined;
+    },
+    onPatch: applyPhotoPatch,
+  });
+
+  function applyPersisted(result: Survey) {
+    const local = surveysRef.current.find((item) => item.id === result.id);
+    replaceSurvey(applyPersistedSurvey(local, result));
+  }
+
+  async function runRemotePersist(surveyId: string, silent?: boolean) {
+    const timer = persistTimers.current.get(surveyId);
+    if (timer) {
+      clearTimeout(timer);
+      persistTimers.current.delete(surveyId);
+    }
+    pendingRemote.current.delete(surveyId);
+
+    const previous = persistChains.current.get(surveyId) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(async () => {
+      if (cancelledSurveys.current.has(surveyId)) return;
+      const latest = surveysRef.current.find((item) => item.id === surveyId);
+      const userId = sessionRef.current?.id;
+      if (!latest || !userId) return;
+      const result = await persistSurvey(userId, latest, {
+        removed: peekRemovedChildren(surveyId),
+      });
+      if (cancelledSurveys.current.has(surveyId)) return;
+      if (result.synced) clearRemovedChildren(surveyId);
+      applyPersisted(result.value);
+      const uploaded = surveysRef.current.find((item) => item.id === surveyId);
+      if (uploaded) enqueuePendingPhotos([uploaded]);
+      if (!silent) showToast(savedToast(result.synced));
+    });
+    persistChains.current.set(surveyId, next);
+    await next;
+  }
+
+  async function flushAllSurveys() {
+    const ids = new Set([...pendingRemote.current, ...persistChains.current.keys()]);
+    await Promise.all([...ids].map((id) => runRemotePersist(id, true)));
+  }
+
+  flushAllRef.current = flushAllSurveys;
+  hydrateRef.current = async (userId, mode) => {
+    if (mode === 'silent' && shouldSkipHydrate()) return;
+    if (hydratingRef.current) {
+      pendingHydrateRef.current = true;
+      return;
+    }
+    hydratingRef.current = true;
+    if (mode === 'splash') setReady(false);
+    if (mode === 'pull') setRefreshing(true);
+    try {
+      await flushAllSurveys();
+      const result = await hydrateWorkspace(userId);
+      if (sessionRef.current?.id !== userId) return;
+      setClients(result.snapshot.clients);
+      setProjects(result.snapshot.projects);
+      surveysRef.current = result.snapshot.surveys;
+      setSurveys(result.snapshot.surveys);
+      enqueuePendingPhotos(result.snapshot.surveys);
+      if (result.fromCacheOnly && (mode === 'splash' || mode === 'pull')) {
+        setToast(result.error ?? 'Sin conexión. Mostrando datos de este dispositivo.');
+        setTimeout(() => setToast(null), 2800);
+      }
+    } finally {
+      hydratingRef.current = false;
+      if (mode === 'pull') setRefreshing(false);
+      if (sessionRef.current?.id === userId) setReady(true);
+      if (pendingHydrateRef.current && sessionRef.current?.id === userId && !shouldSkipHydrate()) {
+        pendingHydrateRef.current = false;
+        void hydrateRef.current(userId, 'silent');
+      }
+    }
+  };
+
+  async function commitSurvey(survey: Survey, options?: { silent?: boolean; flush?: boolean }) {
+    const userId = requireUserId();
+    const silent = options?.silent ?? false;
+    const flush = options?.flush ?? true;
+    const stamped = { ...survey, updatedAt: new Date().toISOString() };
+    const previous = surveysRef.current.find((item) => item.id === stamped.id);
+    noteRemovedChildren(stamped.id, removedSurveyChildren(previous, stamped));
+    replaceSurvey(stamped);
+    await persistSurvey(userId, stamped, { remote: false });
+
+    if (flush) {
+      await runRemotePersist(stamped.id, silent);
+    } else {
+      pendingRemote.current.add(stamped.id);
+      const existing = persistTimers.current.get(stamped.id);
+      if (existing) clearTimeout(existing);
+      persistTimers.current.set(
+        stamped.id,
+        setTimeout(() => {
+          void runRemotePersist(stamped.id, silent);
+        }, 600),
+      );
+    }
+    return surveysRef.current.find((item) => item.id === stamped.id) ?? stamped;
+  }
+
+  const actions: AppActionsValue = {
       showToast,
+      refreshWorkspace: async () => {
+        const userId = sessionRef.current?.id;
+        if (!userId) return;
+        await hydrateRef.current(userId, 'pull');
+      },
       addClient: async (draft) => {
-        const client = await createClient(draft);
-        setClients((current) => [client, ...current]);
-        showToast('Cliente guardado en este dispositivo');
-        return client;
+        const userId = requireUserId();
+        const client = buildClient(draft);
+        const result = await persistClient(userId, client);
+        setClients((current) => [result.value, ...current]);
+        showToast(savedToast(result.synced, 'Cliente guardado'));
+        return result.value;
       },
       editClient: async (id, draft) => {
-        const client = await updateClient(id, draft);
-        if (client) {
-          setClients((current) => current.map((item) => (item.id === id ? client : item)));
-          showToast('Cambios guardados en este dispositivo');
-        }
-        return client;
+        const userId = requireUserId();
+        const current = clientsRef.current.find((item) => item.id === id);
+        if (!current) return null;
+        const client: Client = { ...current, ...draft, updatedAt: new Date().toISOString() };
+        const result = await persistClient(userId, client);
+        setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
+        showToast(savedToast(result.synced, 'Cambios guardados'));
+        return result.value;
       },
       archiveClient: async (id) => {
-        const client = await archiveClientRecord(id);
-        if (client) {
-          setClients((current) => current.map((item) => (item.id === id ? client : item)));
-          showToast('Cliente archivado');
-        }
+        const userId = requireUserId();
+        const current = clientsRef.current.find((item) => item.id === id);
+        if (!current) return;
+        const client: Client = {
+          ...current,
+          archived: true,
+          archivedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const result = await persistClient(userId, client);
+        setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
+        showToast(result.synced ? 'Cliente archivado' : 'Cliente archivado en este dispositivo');
       },
       addProject: async (draft) => {
-        const project = await createProject(draft);
-        setProjects((current) => [project, ...current]);
-        showToast('Proyecto guardado en este dispositivo');
-        return project;
+        const userId = requireUserId();
+        const project = buildProject(draft);
+        const result = await persistProject(userId, project);
+        setProjects((current) => [result.value, ...current]);
+        showToast(savedToast(result.synced, 'Proyecto guardado'));
+        return result.value;
       },
       editProject: async (id, draft) => {
-        const project = await updateProject(id, draft);
-        if (project) {
-          setProjects((current) => current.map((item) => (item.id === id ? project : item)));
-          showToast('Cambios guardados en este dispositivo');
-        }
-        return project;
+        const userId = requireUserId();
+        const current = projectsRef.current.find((item) => item.id === id);
+        if (!current) return null;
+        const project: Project = { ...current, ...draft, updatedAt: new Date().toISOString() };
+        const result = await persistProject(userId, project);
+        setProjects((list) => list.map((item) => (item.id === id ? result.value : item)));
+        showToast(savedToast(result.synced, 'Cambios guardados'));
+        return result.value;
       },
       ensureClientAndProject: async (setup) => {
-        let client = setup.clientId ? clients.find((item) => item.id === setup.clientId) : undefined;
+        const userId = requireUserId();
+        let client = setup.clientId ? clientsRef.current.find((item) => item.id === setup.clientId) : undefined;
         if (!client && setup.client) {
-          client = await createClient(setup.client);
+          const created = await persistClient(userId, buildClient(setup.client));
+          client = created.value;
           setClients((current) => [client!, ...current]);
         }
         if (!client) {
           throw new Error('Falta el cliente para crear el proyecto.');
         }
-        const project = await createProject({ ...setup.project, clientId: client.id });
-        setProjects((current) => [project, ...current]);
-        showToast(setup.clientId ? 'Proyecto listo para el levantamiento' : 'Cliente y proyecto listos');
-        return { client, project };
+        const createdProject = await persistProject(userId, buildProject({ ...setup.project, clientId: client.id }));
+        setProjects((current) => [createdProject.value, ...current]);
+        showToast(savedToast(createdProject.synced, setup.clientId ? 'Proyecto listo para el levantamiento' : 'Cliente y proyecto listos'));
+        return { client, project: createdProject.value };
       },
       startSurvey: async (projectId, serviceType) => {
-        if (!session) {
-          throw new Error('Debes iniciar sesión para crear un levantamiento.');
-        }
+        const userId = requireUserId();
         const now = new Date().toISOString();
         const survey: Survey = {
-          id: createId('srv'),
-          code: nextSurveyCode(surveys),
+          id: createId(),
+          code: nextSurveyCode(surveysRef.current),
           projectId,
-          userId: session.id,
+          userId,
           serviceType,
           status: 'draft',
           startedAt: now,
@@ -180,52 +427,78 @@ export function AppProvider({ children }: { children: ReactNode }) {
           sectors: [],
           photos: [],
         };
-        const saved = await upsertSurvey(survey);
-        replaceSurvey(saved);
-        return saved;
+        return commitSurvey(survey, { silent: true });
       },
       saveSurvey: async (survey, silent) => {
-        replaceSurvey(survey);
-        const saved = await upsertSurvey(survey);
-        replaceSurvey(saved);
-        if (!silent) showToast('Guardado en este dispositivo');
-        return saved;
+        const current = surveysRef.current.find((item) => item.id === survey.id) ?? (survey as Survey);
+        return commitSurvey({ ...current, ...survey, id: current.id }, { silent, flush: !silent });
       },
       completeSurvey: async (id) => {
         const current = surveysRef.current.find((item) => item.id === id);
         if (!current) return null;
         const now = new Date().toISOString();
-        const saved = await upsertSurvey({
-          ...current,
-          status: 'completed',
-          completedAt: now,
-          updatedAt: now,
-        });
-        replaceSurvey(saved);
-        return saved;
+        return commitSurvey(
+          {
+            ...current,
+            status: 'completed',
+            completedAt: now,
+            updatedAt: now,
+          },
+          { silent: true },
+        );
+      },
+      reopenSurvey: async (id) => {
+        const current = surveysRef.current.find((item) => item.id === id);
+        if (!current) return null;
+        return commitSurvey(
+          {
+            ...current,
+            status: 'draft',
+            completedAt: undefined,
+            updatedAt: new Date().toISOString(),
+          },
+          { silent: true },
+        );
       },
       discardSurvey: async (id) => {
-        await deleteSurvey(id);
+        const userId = requireUserId();
+        cancelledSurveys.current.add(id);
+        clearRemovedChildren(id);
+        const timer = persistTimers.current.get(id);
+        if (timer) clearTimeout(timer);
+        persistTimers.current.delete(id);
+        pendingRemote.current.delete(id);
+        await (persistChains.current.get(id) ?? Promise.resolve()).catch(() => undefined);
+        await removeSurvey(userId, id);
         setSurveys((current) => current.filter((item) => item.id !== id));
-        showToast('Borrador descartado');
+        showToast('Levantamiento eliminado');
       },
       addSector: async (surveyId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return null;
         const sector = emptySector(surveyId);
-        const saved = await upsertSurvey({ ...current, sectors: [...current.sectors, sector] });
-        replaceSurvey(saved);
+        await commitSurvey({ ...current, sectors: [...current.sectors, sector] }, { silent: true });
         return sector;
       },
       saveSector: async (surveyId, sector) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
-        const nextSector = { ...sector, updatedAt: new Date().toISOString() };
-        const sectors = current.sectors.some((item) => item.id === sector.id)
-          ? current.sectors.map((item) => (item.id === sector.id ? nextSector : item))
-          : [...current.sectors, nextSector];
-        const saved = await upsertSurvey({ ...current, sectors });
-        replaceSurvey(saved);
+        const existing = current.sectors.find((item) => item.id === sector.id);
+        if (!existing) return;
+        const nextSector = {
+          ...existing,
+          ...sector,
+          id: existing.id,
+          surveyId: existing.surveyId,
+          updatedAt: new Date().toISOString(),
+        };
+        await commitSurvey(
+          {
+            ...current,
+            sectors: current.sectors.map((item) => (item.id === sector.id ? nextSector : item)),
+          },
+          { silent: true, flush: false },
+        );
       },
       duplicateSector: async (surveyId, sectorId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
@@ -236,8 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...cloneSectorFields(source),
           name: source.name.trim() ? `${source.name} (copia)` : '',
         };
-        const saved = await upsertSurvey({ ...current, sectors: [...current.sectors, copy] });
-        replaceSurvey(saved);
+        await commitSurvey({ ...current, sectors: [...current.sectors, copy] }, { silent: true });
         return copy;
       },
       removeSector: async (surveyId, sectorId) => {
@@ -248,43 +520,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const uris = [...sector.photos, ...sector.elements.flatMap((element) => element.photos)].map((photo) => photo.uri);
           await Promise.all(uris.map((uri) => deleteLocalPhoto(uri)));
         }
-        const saved = await upsertSurvey({
-          ...current,
-          sectors: current.sectors.filter((item) => item.id !== sectorId),
-        });
-        replaceSurvey(saved);
+        await commitSurvey(
+          {
+            ...current,
+            sectors: current.sectors.filter((item) => item.id !== sectorId),
+          },
+          { silent: true },
+        );
       },
       addElement: async (surveyId, sectorId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return null;
         const element = emptyElement(surveyId, sectorId, current.serviceType);
-        const saved = await upsertSurvey({
-          ...current,
-          sectors: current.sectors.map((sector) =>
-            sector.id === sectorId ? { ...sector, elements: [...sector.elements, element] } : sector,
-          ),
-        });
-        replaceSurvey(saved);
+        await commitSurvey(
+          {
+            ...current,
+            sectors: current.sectors.map((sector) =>
+              sector.id === sectorId ? { ...sector, elements: [...sector.elements, element] } : sector,
+            ),
+          },
+          { silent: true },
+        );
         return element;
       },
       saveElement: async (surveyId, element) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
-        const nextElement = { ...element, updatedAt: new Date().toISOString() };
-        const saved = await upsertSurvey({
-          ...current,
-          sectors: current.sectors.map((sector) =>
-            sector.id === element.sectorId
-              ? {
-                  ...sector,
-                  elements: sector.elements.some((item) => item.id === element.id)
-                    ? sector.elements.map((item) => (item.id === element.id ? nextElement : item))
-                    : [...sector.elements, nextElement],
-                }
-              : sector,
-          ),
-        });
-        replaceSurvey(saved);
+        const now = new Date().toISOString();
+        await commitSurvey(
+          {
+            ...current,
+            sectors: current.sectors.map((sector) => ({
+              ...sector,
+              elements: sector.elements.map((item) =>
+                item.id === element.id ? { ...item, ...element, id: item.id, updatedAt: now } : item,
+              ),
+            })),
+          },
+          { silent: true, flush: false },
+        );
       },
       removeElement: async (surveyId, elementId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
@@ -293,121 +567,172 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (element) {
           await Promise.all(element.photos.map((photo) => deleteLocalPhoto(photo.uri)));
         }
-        const saved = await upsertSurvey({
-          ...current,
-          sectors: current.sectors.map((sector) => ({
-            ...sector,
-            elements: sector.elements.filter((item) => item.id !== elementId),
-          })),
-        });
-        replaceSurvey(saved);
+        await commitSurvey(
+          {
+            ...current,
+            sectors: current.sectors.map((sector) => ({
+              ...sector,
+              elements: sector.elements.filter((item) => item.id !== elementId),
+            })),
+          },
+          { silent: true },
+        );
       },
       addPhoto: async ({ surveyId, sectorId, elementId, uri, category = 'overview' }) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return null;
         const localUri = await savePhotoLocally(uri);
         const photo: PhotoEvidence = {
-          id: createId('pho'),
+          id: createId(),
           uri: localUri,
           surveyId,
           sectorId,
           elementId,
           category,
+          uploadStatus: 'pending',
           createdAt: new Date().toISOString(),
         };
 
         if (elementId && sectorId) {
-          const sectors = current.sectors.map((sector) =>
-            sector.id === sectorId
-              ? {
-                  ...sector,
-                  elements: sector.elements.map((element) =>
-                    element.id === elementId ? { ...element, photos: [...element.photos, photo] } : element,
-                  ),
-                }
-              : sector,
+          await commitSurvey(
+            {
+              ...current,
+              sectors: current.sectors.map((sector) =>
+                sector.id === sectorId
+                  ? {
+                      ...sector,
+                      elements: sector.elements.map((element) =>
+                        element.id === elementId ? { ...element, photos: [...element.photos, photo] } : element,
+                      ),
+                    }
+                  : sector,
+              ),
+            },
+            { silent: true, flush: false },
           );
-          replaceSurvey(await upsertSurvey({ ...current, sectors }));
         } else if (sectorId) {
-          const sectors = current.sectors.map((sector) =>
-            sector.id === sectorId ? { ...sector, photos: [...sector.photos, photo] } : sector,
+          await commitSurvey(
+            {
+              ...current,
+              sectors: current.sectors.map((sector) =>
+                sector.id === sectorId ? { ...sector, photos: [...sector.photos, photo] } : sector,
+              ),
+            },
+            { silent: true, flush: false },
           );
-          replaceSurvey(await upsertSurvey({ ...current, sectors }));
         } else {
-          replaceSurvey(await upsertSurvey({ ...current, photos: [...current.photos, photo] }));
+          await commitSurvey({ ...current, photos: [...current.photos, photo] }, { silent: true, flush: false });
         }
+        enqueuePhotoUpload(surveyId, photo.id);
         return photo;
       },
       updatePhoto: async (surveyId, photoId, patch) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
         const mapPhoto = (photo: PhotoEvidence) => (photo.id === photoId ? { ...photo, ...patch } : photo);
-        const saved = await upsertSurvey({
-          ...current,
-          photos: current.photos.map(mapPhoto),
-          sectors: current.sectors.map((sector) => ({
-            ...sector,
-            photos: sector.photos.map(mapPhoto),
-            elements: sector.elements.map((element) => ({ ...element, photos: element.photos.map(mapPhoto) })),
-          })),
-        });
-        replaceSurvey(saved);
+        await commitSurvey(
+          {
+            ...current,
+            photos: current.photos.map(mapPhoto),
+            sectors: current.sectors.map((sector) => ({
+              ...sector,
+              photos: sector.photos.map(mapPhoto),
+              elements: sector.elements.map((element) => ({ ...element, photos: element.photos.map(mapPhoto) })),
+            })),
+          },
+          { silent: true, flush: false },
+        );
       },
       removePhoto: async (surveyId, photoId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
+        cancelPhotoUpload(photoId);
         const all = collectPhotos(current);
         const photo = all.find((item) => item.id === photoId);
         if (photo) await deleteLocalPhoto(photo.uri);
-        const saved = await upsertSurvey({
-          ...current,
-          photos: current.photos.filter((item) => item.id !== photoId),
-          sectors: current.sectors.map((sector) => ({
-            ...sector,
-            photos: sector.photos.filter((item) => item.id !== photoId),
-            elements: sector.elements.map((element) => ({
-              ...element,
-              photos: element.photos.filter((item) => item.id !== photoId),
+        await commitSurvey(
+          {
+            ...current,
+            photos: current.photos.filter((item) => item.id !== photoId),
+            sectors: current.sectors.map((sector) => ({
+              ...sector,
+              photos: sector.photos.filter((item) => item.id !== photoId),
+              elements: sector.elements.map((element) => ({
+                ...element,
+                photos: element.photos.filter((item) => item.id !== photoId),
+              })),
             })),
-          })),
-        });
-        replaceSurvey(saved);
+          },
+          { silent: true },
+        );
       },
-      resetDemoData: async () => {
-        await resetStoredDemo();
-        const data = await loadAppData();
-        setClients(data.clients);
-        setProjects(data.projects);
-        setSurveys(data.surveys);
-        showToast('Datos demo restablecidos');
+      retryPhotoUpload: (surveyId, photoId) => {
+        const current = surveysRef.current.find((item) => item.id === surveyId);
+        if (!current) return;
+        const photo = collectPhotos(current).find((item) => item.id === photoId);
+        if (!photo || photo.storagePath) return;
+        applyPhotoPatch(surveyId, photoId, { uploadStatus: 'pending' });
+        enqueuePhotoUpload(surveyId, photoId);
       },
-      getClient: (id) => clients.find((item) => item.id === id),
-      getProject: (id) => projects.find((item) => item.id === id),
-      getSurvey: (id) => surveys.find((item) => item.id === id),
-    }),
-    [clients, projects, ready, session, surveys, toast],
+      getClient: (id) => clientsRef.current.find((item) => item.id === id),
+      getProject: (id) => projectsRef.current.find((item) => item.id === id),
+      getSurvey: (id) => surveysRef.current.find((item) => item.id === id),
+  };
+  actionsRef.current = actions;
+
+  const dataValue = useMemo<AppDataValue>(
+    () => ({ ready, refreshing, clients, projects, surveys, toast }),
+    [ready, refreshing, clients, projects, surveys, toast],
   );
 
+  const stableActions = useMemo(() => {
+    const bag = {} as AppActionsValue;
+    for (const key of APP_ACTION_KEYS) {
+      Object.defineProperty(bag, key, {
+        configurable: true,
+        enumerable: true,
+        get: () => actionsRef.current[key],
+      });
+    }
+    return bag;
+  }, []);
+
   return (
-    <AppContext.Provider value={value}>
-      <View className="flex-1">
-        {children}
-        {toast ? (
-          <View className="absolute bottom-8 left-5 right-5 z-50 items-center" pointerEvents="none">
-            <View className="rounded-full bg-ink px-4 py-3">
-              <Text className="text-sm font-medium text-white">{toast}</Text>
+    <AppActionsContext.Provider value={stableActions}>
+      <AppDataContext.Provider value={dataValue}>
+        <View className="flex-1">
+          {children}
+          {toast ? (
+            <View className="absolute bottom-8 left-5 right-5 z-50 items-center" pointerEvents="none">
+              <View className="rounded-full bg-ink px-4 py-3">
+                <Text className="text-sm font-medium text-white">{toast}</Text>
+              </View>
             </View>
-          </View>
-        ) : null}
-      </View>
-    </AppContext.Provider>
+          ) : null}
+        </View>
+      </AppDataContext.Provider>
+    </AppActionsContext.Provider>
   );
 }
 
-export function useApp() {
-  const context = useContext(AppContext);
+export function useAppData() {
+  const context = useContext(AppDataContext);
   if (!context) {
     throw new Error('useApp must be used within AppProvider');
   }
   return context;
+}
+
+export function useAppActions() {
+  const context = useContext(AppActionsContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context;
+}
+
+export function useApp(): AppContextValue {
+  const data = useAppData();
+  const actions = useAppActions();
+  return { ...data, ...actions };
 }

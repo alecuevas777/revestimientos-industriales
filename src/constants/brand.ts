@@ -7,6 +7,7 @@ export const APP_WEBSITE = 'https://vicast.cl';
 
 export const BrandImages = {
   logo: require('../../assets/images/vicast-logo.png'),
+  logoBlack: require('../../assets/images/logo negro vicast (1).png'),
   mark: require('../../assets/images/vicast-isotipo.png'),
   loginBg: require('../../assets/images/vicast-login-fondo.jpg'),
 } as const;

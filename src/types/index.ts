@@ -188,9 +188,13 @@ export type PhotoCategory =
   | 'detail'
   | 'other';
 
+export type PhotoUploadStatus = 'pending' | 'uploading' | 'ready' | 'error';
+
 export type PhotoEvidence = {
   id: string;
   uri: string;
+  storagePath?: string;
+  uploadStatus?: PhotoUploadStatus;
   surveyId: string;
   sectorId?: string;
   elementId?: string;

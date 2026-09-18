@@ -11,10 +11,22 @@ type Props = {
   titleAccent: string;
   subtitle: string;
   notice?: string;
+  align?: 'center' | 'start';
+  stackedTitle?: boolean;
   children: ReactNode;
 };
 
-export function AuthScreen({ titleLead, titleAccent, subtitle, notice, children }: Props) {
+export function AuthScreen({
+  titleLead,
+  titleAccent,
+  subtitle,
+  notice,
+  align = 'center',
+  stackedTitle = false,
+  children,
+}: Props) {
+  const start = align === 'start';
+
   return (
     <View className="flex-1 bg-ink">
       <StatusBar style="light" />
@@ -50,13 +62,28 @@ export function AuthScreen({ titleLead, titleAccent, subtitle, notice, children 
                 </Text>
               </View>
 
-              <Text className="mt-8 text-center text-[36px] font-bold leading-10 text-white">
-                {titleLead} <Text className="text-brand">{titleAccent}</Text>
-              </Text>
-              <Text className="mt-3 text-center text-base leading-6 text-white/80">{subtitle}</Text>
-              {notice ? (
-                <Text className="mt-3 text-center text-sm font-medium leading-5 text-brand">{notice}</Text>
-              ) : null}
+              <View className={`mt-8 ${start ? 'items-start' : 'items-center'}`}>
+                {stackedTitle ? (
+                  <>
+                    <Text className="text-center text-[36px] font-bold leading-10 text-white">{titleLead}</Text>
+                    <Text className="text-center text-[36px] font-bold leading-10 text-brand">{titleAccent}</Text>
+                  </>
+                ) : (
+                  <Text
+                    className={`text-[36px] font-bold leading-10 text-white ${start ? 'text-left' : 'text-center'}`}
+                  >
+                    {titleLead} <Text className="text-brand">{titleAccent}</Text>
+                  </Text>
+                )}
+                <Text
+                  className={`mt-3 text-base leading-6 text-white/80 ${start ? 'text-left' : 'text-center'}`}
+                >
+                  {subtitle}
+                </Text>
+                {notice ? (
+                  <Text className="mt-3 text-sm font-medium leading-5 text-brand">{notice}</Text>
+                ) : null}
+              </View>
 
               <View className="mt-7">{children}</View>
             </View>

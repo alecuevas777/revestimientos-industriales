@@ -1,14 +1,14 @@
 import { Redirect } from 'expo-router';
+import { ArrowRight, Lock, Mail } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import { AuthBrandHeader } from '@/components/AuthBrandHeader';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Screen } from '@/components/ui/Screen';
-import { APP_EMAIL_PLACEHOLDER } from '@/constants/brand';
+import { AuthAltLinks } from '@/components/auth/AuthAltLinks';
+import { AuthButton } from '@/components/auth/AuthButton';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthScreen } from '@/components/auth/AuthScreen';
 import { useAuth } from '@/context/AuthProvider';
+import { useActionLock } from '@/hooks/useActionLock';
 import { href, replace } from '@/lib/nav';
 
 export default function ForgotPasswordScreen() {
@@ -19,8 +19,10 @@ export default function ForgotPasswordScreen() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const run = useActionLock();
 
   if (resetDone) {
     return <Redirect href={href('/login?reset=1')} />;
@@ -31,144 +33,169 @@ export default function ForgotPasswordScreen() {
   }
 
   async function handleSendCode() {
-    setLoading(true);
-    const message = await requestReset(email);
-    setLoading(false);
-    if (message) {
-      setError(message);
-      return;
-    }
-    setError('');
-    setStep('code');
+    await run(async () => {
+      setSending(true);
+      try {
+        const message = await requestReset(email);
+        if (message) {
+          setError(message);
+          return;
+        }
+        setError('');
+        setStep('code');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'No se pudo enviar el código.');
+      } finally {
+        setSending(false);
+      }
+    });
   }
 
   async function handleSavePassword() {
+    if (password.length < 6) {
+      setError('La contraseña debe tener mínimo 6 caracteres.');
+      return;
+    }
     if (password !== confirm) {
       setError('Las contraseñas no coinciden.');
       return;
     }
 
-    setLoading(true);
-    const message = await resetWithCode({ email, token, password });
-    setLoading(false);
-    if (message) {
-      setError(message);
-      return;
-    }
+    await run(async () => {
+      setSaving(true);
+      try {
+        const message = await resetWithCode({ email, token, password });
+        if (message) {
+          setError(message);
+          return;
+        }
+        setResetDone(true);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'No se pudo guardar la contraseña.');
+      } finally {
+        setSaving(false);
+      }
+    });
+  }
 
-    setResetDone(true);
+  function goToEmailStep() {
+    setStep('email');
+    setToken('');
+    setPassword('');
+    setConfirm('');
+    setError('');
+  }
+
+  if (step === 'code') {
+    return (
+      <AuthScreen
+        stackedTitle
+        titleLead="Nueva"
+        titleAccent="contraseña"
+        subtitle={`Ingresa el código enviado a ${email.trim().toLowerCase()} y elige una nueva contraseña.`}
+      >
+        <View className="gap-3.5">
+          <AuthField
+            icon={Mail}
+            value={token}
+            onChangeText={(value) => {
+              setToken(value.replace(/[^\d]/g, '').slice(0, 6));
+              setError('');
+            }}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="one-time-code"
+            placeholder="Código"
+            maxLength={6}
+          />
+          <AuthField
+            icon={Lock}
+            password
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              setError('');
+            }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            placeholder="Nueva contraseña"
+            hint="La contraseña debe tener mínimo 6 caracteres."
+          />
+          <AuthField
+            icon={Lock}
+            password
+            value={confirm}
+            onChangeText={(value) => {
+              setConfirm(value);
+              setError('');
+            }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            placeholder="Confirmar contraseña"
+            error={error}
+          />
+
+          <AuthButton
+            label="Guardar contraseña"
+            loading={saving}
+            onPress={() => void handleSavePassword()}
+            icon={<ArrowRight size={18} color="#FFFFFF" />}
+          />
+          <AuthButton
+            variant="ghost"
+            label="Reenviar código"
+            loading={sending}
+            onPress={() => void handleSendCode()}
+          />
+
+          <AuthAltLinks onOtherEmail={goToEmailStep} onLogin={() => replace('/login')} />
+        </View>
+      </AuthScreen>
+    );
   }
 
   return (
-    <Screen>
-      <View className="flex-1 justify-center py-8">
-        <AuthBrandHeader
-          title="Recuperar contraseña"
-          subtitle={
-            step === 'email'
-              ? 'Te enviaremos un código de 6 dígitos al correo.'
-              : `Ingresa el código enviado a ${email.trim().toLowerCase()} y elige una contraseña nueva.`
-          }
+    <AuthScreen
+      stackedTitle
+      titleLead="Recuperar"
+      titleAccent="contraseña"
+      subtitle="Te enviaremos un código de 6 dígitos a tu correo para restablecer tu contraseña."
+    >
+      <View className="gap-3.5">
+        <AuthField
+          icon={Mail}
+          value={email}
+          onChangeText={(value) => {
+            setEmail(value);
+            setError('');
+          }}
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          placeholder="Correo electrónico"
+          error={error}
+          onSubmitEditing={() => {
+            void handleSendCode();
+          }}
         />
 
-        {step === 'email' ? (
-          <View className="mt-8 gap-4">
-            <Input
-              label="Email"
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                setError('');
-              }}
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              placeholder={APP_EMAIL_PLACEHOLDER}
-              error={error}
-              onSubmitEditing={() => {
-                void handleSendCode();
-              }}
-            />
-            <Button label="Enviar código" onPress={() => void handleSendCode()} loading={loading} />
-          </View>
-        ) : (
-          <View className="mt-8 gap-4">
-            <Input
-              label="Código"
-              value={token}
-              onChangeText={(value) => {
-                setToken(value.replace(/[^\d]/g, '').slice(0, 8));
-                setError('');
-              }}
-              keyboardType="number-pad"
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-              placeholder="000000"
-              maxLength={8}
-            />
-            <Input
-              label="Nueva contraseña"
-              value={password}
-              onChangeText={(value) => {
-                setPassword(value);
-                setError('');
-              }}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              secureTextEntry
-              placeholder="Mínimo 6 caracteres"
-            />
-            <Input
-              label="Confirmar contraseña"
-              value={confirm}
-              onChangeText={(value) => {
-                setConfirm(value);
-                setError('');
-              }}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              secureTextEntry
-              placeholder="Repite la contraseña"
-              error={error}
-            />
-            <Button label="Guardar contraseña" onPress={() => void handleSavePassword()} loading={loading} />
-            <Button
-              label="Reenviar código"
-              variant="ghost"
-              onPress={() => void handleSendCode()}
-              loading={loading}
-            />
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setStep('email');
-                setError('');
-              }}
-              className="items-center py-1"
-            >
-              <Text className="text-sm text-muted">Usar otro email</Text>
-            </Pressable>
-          </View>
-        )}
+        <AuthButton
+          label="Enviar código"
+          loading={sending}
+          onPress={() => void handleSendCode()}
+          icon={<ArrowRight size={18} color="#FFFFFF" />}
+        />
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => replace('/login')}
-          className="mt-6 items-center py-2"
-        >
-          <Text className="text-sm font-semibold text-brand">Volver a iniciar sesión</Text>
-        </Pressable>
-
-        <Card className="mt-4">
-          <Text className="text-sm font-semibold text-ink">Plantilla del correo</Text>
-          <Text className="mt-1 text-sm leading-5 text-muted">
-            En Authentication → Email Templates → Reset password el correo debe mostrar el código con
-            {'{{ .Token }}'}. Si solo hay un enlace, cámbialo para que aparezca el número.
-          </Text>
-        </Card>
+        <AuthAltLinks
+          onOtherEmail={() => {
+            setEmail('');
+            setError('');
+          }}
+          onLogin={() => replace('/login')}
+        />
       </View>
-    </Screen>
+    </AuthScreen>
   );
 }

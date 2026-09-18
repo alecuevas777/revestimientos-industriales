@@ -1,15 +1,12 @@
-import { Camera, ChevronRight, Layers } from 'lucide-react-native';
+import { Camera, ChevronRight, ClipboardList, Layers, MapPin } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { ServiceMark } from '@/components/ServiceMark';
 import { Card } from '@/components/ui/Card';
-import { ConditionBadge, SeverityBadge, SurveyStatusBadge } from '@/components/ui/StatusBadge';
-import { DEMO_USER } from '@/constants/labels';
+import { SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
-import { surveyHeadline } from '@/lib/display';
-import { formatDate } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
-import { elementCount, maxSeverity, photoCount } from '@/lib/survey';
+import { elementCount, photoCount } from '@/lib/survey';
 import type { Survey } from '@/types';
 
 type Props = {
@@ -27,11 +24,11 @@ export function SurveyCard({
   clientName,
   location,
   compact,
-  technician = DEMO_USER.name,
+  technician,
 }: Props) {
   const photos = photoCount(survey);
-  const highest = maxSeverity(survey);
   const elements = elementCount(survey);
+  const place = [clientName, location].filter(Boolean).join(' · ');
 
   return (
     <Pressable
@@ -40,50 +37,64 @@ export function SurveyCard({
       }
     >
       <Card>
-        <View className="flex-row items-start justify-between gap-3">
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-brand">{survey.code}</Text>
-            <Text className="mt-1 text-sm text-muted">{formatDate(survey.completedAt ?? survey.startedAt)}</Text>
-            {projectName ? <Text className="mt-2 text-base font-semibold text-ink">{projectName}</Text> : null}
-            {clientName || location ? (
-              <Text className="mt-1 text-sm text-muted">{[clientName, location].filter(Boolean).join(' · ')}</Text>
+        <View className="flex-row items-start gap-3">
+          <View className="h-12 w-12 items-center justify-center rounded-xl border border-line bg-canvas">
+            <ClipboardList size={22} color={Colors.ink} />
+          </View>
+          <View className="min-w-0 flex-1">
+            <View className="flex-row items-start justify-between gap-2">
+              <Text className="flex-1 text-base font-bold text-ink">{survey.code}</Text>
+              <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center gap-1.5">
+                  <View
+                    className={`h-2 w-2 rounded-full ${survey.status === 'completed' ? 'bg-success' : 'bg-warning'}`}
+                  />
+                  <Text className="text-sm font-medium text-ink">
+                    {survey.status === 'completed' ? 'Finalizado' : 'Borrador'}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={Colors.muted} />
+              </View>
+            </View>
+            {projectName ? (
+              <Text numberOfLines={1} className="mt-1.5 text-sm text-muted">
+                {projectName}
+              </Text>
             ) : null}
-            <View className="mt-2">
-              <ServiceMark type={survey.serviceType} />
-            </View>
-            <Text className="mt-2 text-sm leading-5 text-muted">{surveyHeadline(survey)}</Text>
+            {place ? (
+              <View className="mt-1 flex-row items-center gap-1.5">
+                <MapPin size={13} color={Colors.muted} />
+                <Text numberOfLines={1} className="flex-1 text-sm text-muted">
+                  {place}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <SurveyStatusBadge status={survey.status} />
         </View>
 
-        <View className="mt-3 flex-row flex-wrap gap-2">
-          {survey.overallCondition ? <ConditionBadge condition={survey.overallCondition} /> : null}
-          {highest ? <SeverityBadge severity={highest} /> : null}
-        </View>
-
-        <View className="mt-3 flex-row items-center justify-between">
-          <View className="flex-row items-center gap-3">
-            <View className="flex-row items-center gap-1.5">
-              <Layers size={15} color={Colors.muted} />
-              <Text className="text-sm text-muted">
-                {elements > 0
-                  ? `${elements} ${elements === 1 ? 'elemento' : 'elementos'}`
-                  : `${survey.sectors.length} ${survey.sectors.length === 1 ? 'sector' : 'sectores'}`}
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <Camera size={15} color={Colors.muted} />
-              <Text className="text-sm text-muted">
-                {photos} {photos === 1 ? 'foto' : 'fotos'}
-              </Text>
-            </View>
+        <View className="mt-4 flex-row flex-wrap items-center gap-x-4 gap-y-2">
+          <Text className="text-sm font-semibold text-brand">{SERVICE_TYPE_SHORT[survey.serviceType]}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Layers size={14} color={Colors.brand} />
+            <Text className="text-sm font-semibold text-brand">
+              {elements > 0
+                ? `${elements} ${elements === 1 ? 'elemento' : 'elementos'}`
+                : `${survey.sectors.length} ${survey.sectors.length === 1 ? 'sector' : 'sectores'}`}
+            </Text>
           </View>
-          <View className="flex-row items-center">
-            <Text className="text-sm font-semibold text-brand">{compact ? 'Ver' : 'Ver levantamiento'}</Text>
-            <ChevronRight size={16} color={Colors.brand} />
+          <View className="flex-row items-center gap-1.5">
+            <Camera size={14} color={Colors.muted} />
+            <Text className="text-sm text-muted">
+              {photos} {photos === 1 ? 'foto' : 'fotos'}
+            </Text>
           </View>
         </View>
-        <Text className="mt-2 text-xs text-muted">Técnico: {technician}</Text>
+        {!compact ? (
+          <Text className="mt-2 text-sm text-muted">
+            {technician ? `Técnico: ${technician} · ` : ''}
+            {formatRelative(survey.completedAt ?? survey.updatedAt)}
+          </Text>
+        ) : null}
       </Card>
     </Pressable>
   );

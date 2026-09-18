@@ -1,13 +1,14 @@
 import { Redirect } from 'expo-router';
+import { ArrowRight, Lock } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { AuthBrandHeader } from '@/components/AuthBrandHeader';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Screen } from '@/components/ui/Screen';
+import { AuthAltLinks } from '@/components/auth/AuthAltLinks';
+import { AuthButton } from '@/components/auth/AuthButton';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthScreen } from '@/components/auth/AuthScreen';
 import { useAuth } from '@/context/AuthProvider';
+import { useActionLock } from '@/hooks/useActionLock';
 import { href, replace } from '@/lib/nav';
 
 export default function ResetPasswordScreen() {
@@ -17,6 +18,7 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const run = useActionLock();
 
   if (resetDone) {
     return <Redirect href={href('/login?reset=1')} />;
@@ -27,38 +29,49 @@ export default function ResetPasswordScreen() {
   }
 
   async function handleSave() {
+    if (password.length < 6) {
+      setError('La contraseña debe tener mínimo 6 caracteres.');
+      return;
+    }
     if (password !== confirm) {
       setError('Las contraseñas no coinciden.');
       return;
     }
 
-    setLoading(true);
-    const message = await completeReset(password);
-    setLoading(false);
-    if (message) {
-      setError(message);
-      return;
-    }
-
-    setResetDone(true);
+    await run(async () => {
+      setLoading(true);
+      try {
+        const message = await completeReset(password);
+        if (message) {
+          setError(message);
+          return;
+        }
+        setResetDone(true);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'No se pudo guardar la contraseña.');
+      } finally {
+        setLoading(false);
+      }
+    });
   }
 
   return (
-    <Screen>
-      <View className="flex-1 justify-center py-8">
-        <AuthBrandHeader
-          title="Nueva contraseña"
-          subtitle={
-            recoveryPending
-              ? 'Elige una contraseña nueva. Después vuelve a iniciar sesión.'
-              : 'Abre el enlace del correo en este dispositivo para continuar.'
-          }
-        />
-
+    <AuthScreen
+      stackedTitle
+      titleLead="Nueva"
+      titleAccent="contraseña"
+      subtitle={
+        recoveryPending
+          ? 'Elige una contraseña nueva. Después vuelve a iniciar sesión.'
+          : 'Abre el enlace del correo en este dispositivo para continuar, o recupera el acceso con un código.'
+      }
+    >
+      <View className="gap-3.5">
         {recoveryPending ? (
-          <View className="mt-8 gap-4">
-            <Input
-              label="Nueva contraseña"
+          <>
+            <AuthField
+              icon={Lock}
+              password
               value={password}
               onChangeText={(value) => {
                 setPassword(value);
@@ -66,11 +79,12 @@ export default function ResetPasswordScreen() {
               }}
               autoComplete="new-password"
               textContentType="newPassword"
-              secureTextEntry
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Nueva contraseña"
+              hint="La contraseña debe tener mínimo 6 caracteres."
             />
-            <Input
-              label="Confirmar contraseña"
+            <AuthField
+              icon={Lock}
+              password
               value={confirm}
               onChangeText={(value) => {
                 setConfirm(value);
@@ -78,33 +92,32 @@ export default function ResetPasswordScreen() {
               }}
               autoComplete="new-password"
               textContentType="newPassword"
-              secureTextEntry
-              placeholder="Repite la contraseña"
+              placeholder="Confirmar contraseña"
               error={error}
             />
-            <Button label="Guardar contraseña" onPress={() => void handleSave()} loading={loading} />
-          </View>
+            <AuthButton
+              label="Guardar contraseña"
+              loading={loading}
+              onPress={() => void handleSave()}
+              icon={<ArrowRight size={18} color="#FFFFFF" />}
+            />
+          </>
         ) : (
-          <View className="mt-8 gap-4">
-            <Card>
-              <Text className="text-sm font-semibold text-ink">Esperando el enlace</Text>
-              <Text className="mt-1 text-sm leading-5 text-muted">
-                Si todavía no pediste el correo, hazlo desde recuperar contraseña. El enlace caduca;
-                si ya expiró, solicita uno nuevo.
-              </Text>
-            </Card>
-            <Button label="Ir a recuperar contraseña" onPress={() => replace('/forgot-password')} />
-          </View>
+          <>
+            <Text className="text-center text-sm leading-5 text-white/80">
+              Si todavía no pediste el correo, hazlo desde recuperar contraseña. El enlace caduca; si ya
+              expiró, solicita uno nuevo.
+            </Text>
+            <AuthButton
+              label="Ir a recuperar contraseña"
+              onPress={() => replace('/forgot-password')}
+              icon={<ArrowRight size={18} color="#FFFFFF" />}
+            />
+          </>
         )}
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => replace('/login')}
-          className="mt-6 items-center py-2"
-        >
-          <Text className="text-sm font-semibold text-brand">Volver a iniciar sesión</Text>
-        </Pressable>
+        <AuthAltLinks onLogin={() => replace('/login')} />
       </View>
-    </Screen>
+    </AuthScreen>
   );
 }

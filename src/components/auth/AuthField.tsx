@@ -5,10 +5,11 @@ import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-nat
 type Props = TextInputProps & {
   icon: LucideIcon;
   error?: string;
+  hint?: string;
   password?: boolean;
 };
 
-export function AuthField({ icon: Icon, error, password, ...props }: Props) {
+export function AuthField({ icon: Icon, error, hint, password, ...props }: Props) {
   const [hidden, setHidden] = useState(Boolean(password));
 
   return (
@@ -37,7 +38,11 @@ export function AuthField({ icon: Icon, error, password, ...props }: Props) {
           </Pressable>
         ) : null}
       </View>
-      {error ? <Text className="mt-2 px-2 text-sm text-red-400">{error}</Text> : null}
+      {error ? (
+        <Text className="mt-2 px-2 text-sm text-red-400">{error}</Text>
+      ) : hint ? (
+        <Text className="mt-2 px-2 text-sm text-white/60">{hint}</Text>
+      ) : null}
     </View>
   );
 }

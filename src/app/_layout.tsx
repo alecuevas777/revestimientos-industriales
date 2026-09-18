@@ -38,18 +38,14 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.canvas } }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="perfil" />
-        <Stack.Screen name="clientes" />
-        <Stack.Screen name="proyectos" />
-        <Stack.Screen name="levantamientos" />
+        <Stack.Screen name="(main)" />
       </Stack.Protected>
 
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
         <Stack.Screen name="register" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
-        <Stack.Screen name="forgot-password" />
-        <Stack.Screen name="reset-password" />
+        <Stack.Screen name="forgot-password" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
+        <Stack.Screen name="reset-password" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
       </Stack.Protected>
     </Stack>
   );

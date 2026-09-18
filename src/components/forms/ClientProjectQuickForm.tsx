@@ -1,20 +1,16 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SelectableCard } from '@/components/ui/SelectableCard';
-import type { Client, ClientProjectSetup } from '@/types';
+import type { ClientProjectSetup } from '@/types';
 
 type Props = {
-  clients: Client[];
   submitting?: boolean;
   onSubmit: (setup: ClientProjectSetup) => void;
 };
 
-export function ClientProjectQuickForm({ clients, submitting, onSubmit }: Props) {
-  const activeClients = clients.filter((client) => !client.archived);
-  const [clientId, setClientId] = useState<'new' | string>('new');
+export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
   const [clientName, setClientName] = useState('');
   const [contactName, setContactName] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -22,9 +18,8 @@ export function ClientProjectQuickForm({ clients, submitting, onSubmit }: Props)
   const [errors, setErrors] = useState<{ client?: string; project?: string }>({});
 
   function handleSubmit() {
-    const creatingClient = clientId === 'new';
     const nextErrors = {
-      client: creatingClient && !clientName.trim() ? 'Ingresa el cliente.' : undefined,
+      client: clientName.trim() ? undefined : 'Ingresa el cliente.',
       project: projectName.trim() ? undefined : 'Ingresa el proyecto o recinto.',
     };
     setErrors(nextErrors);
@@ -32,14 +27,11 @@ export function ClientProjectQuickForm({ clients, submitting, onSubmit }: Props)
 
     const cityValue = city.trim() || undefined;
     onSubmit({
-      clientId: creatingClient ? undefined : clientId,
-      client: creatingClient
-        ? {
-            name: clientName.trim(),
-            contactName: contactName.trim() || undefined,
-            city: cityValue,
-          }
-        : undefined,
+      client: {
+        name: clientName.trim(),
+        contactName: contactName.trim() || undefined,
+        city: cityValue,
+      },
       project: {
         name: projectName.trim(),
         city: cityValue,
@@ -52,51 +44,24 @@ export function ClientProjectQuickForm({ clients, submitting, onSubmit }: Props)
 
   return (
     <View className="gap-5">
-      <View className="gap-2">
-        <Text className="text-sm font-semibold text-ink">Cliente</Text>
-        <SelectableCard
-          title="Nuevo cliente"
-          description="Razón social mínima. El resto se puede completar después."
-          selected={clientId === 'new'}
-          onPress={() => {
-            setClientId('new');
+      <View className="gap-4">
+        <Input
+          label="Razón social"
+          value={clientName}
+          onChangeText={(value) => {
+            setClientName(value);
             setErrors((current) => ({ ...current, client: undefined }));
           }}
+          error={errors.client}
+          placeholder="Industrias del Pacífico"
         />
-        {activeClients.map((client) => (
-          <SelectableCard
-            key={client.id}
-            title={client.name}
-            description={client.city}
-            selected={clientId === client.id}
-            onPress={() => {
-              setClientId(client.id);
-              setErrors((current) => ({ ...current, client: undefined }));
-            }}
-          />
-        ))}
+        <Input
+          label="Contacto (opcional)"
+          value={contactName}
+          onChangeText={setContactName}
+          placeholder="María Soto"
+        />
       </View>
-
-      {clientId === 'new' ? (
-        <View className="gap-4">
-          <Input
-            label="Razón social"
-            value={clientName}
-            onChangeText={(value) => {
-              setClientName(value);
-              setErrors((current) => ({ ...current, client: undefined }));
-            }}
-            error={errors.client}
-            placeholder="Industrias del Pacífico"
-          />
-          <Input
-            label="Contacto (opcional)"
-            value={contactName}
-            onChangeText={setContactName}
-            placeholder="María Soto"
-          />
-        </View>
-      ) : null}
 
       <View className="gap-4">
         <Input

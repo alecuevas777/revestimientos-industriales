@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>VICAST · Checklist de producto</title>
+  <style>
+    @page { size: A4; margin: 16mm 16mm 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      color: #121212;
+      background: #fff;
+      font-size: 10.5pt;
+      line-height: 1.35;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 3px solid #F96706;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    .brand { font-size: 22pt; font-weight: 800; letter-spacing: -0.5px; }
+    .brand span { color: #F96706; }
+    .meta { text-align: right; color: #6B7280; font-size: 9pt; }
+    h1 {
+      font-size: 13pt;
+      margin: 0 0 4px;
+      font-weight: 700;
+    }
+    p.lead {
+      margin: 0 0 14px;
+      color: #6B7280;
+      font-size: 9.5pt;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+      font-size: 9pt;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .box {
+      width: 11px;
+      height: 11px;
+      border: 1.5px solid #121212;
+      display: inline-block;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .box.done { background: #059669; border-color: #059669; }
+    .box.done::after {
+      content: "";
+      position: absolute;
+      left: 3px; top: 0px;
+      width: 3px; height: 7px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .box.partial { background: #D97706; border-color: #D97706; }
+    .box.todo { background: #fff; }
+    h2 {
+      font-size: 11pt;
+      margin: 14px 0 6px;
+      padding: 5px 8px;
+      background: #FFE8D6;
+      color: #121212;
+      font-weight: 700;
+      page-break-after: avoid;
+    }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 3.5px 4px;
+      page-break-inside: avoid;
+    }
+    li .label { font-weight: 700; min-width: 62px; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .3px; padding-top: 1px; }
+    .done-t { color: #059669; }
+    .partial-t { color: #B45309; }
+    .todo-t { color: #6B7280; }
+    li .text { flex: 1; }
+    footer.note {
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px solid #E5E5E5;
+      font-size: 9pt;
+      color: #374151;
+    }
+    footer.note strong { color: #121212; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">VICAST <span>·</span> Levantamientos</div>
+    </div>
+    <div class="meta">
+      Checklist de producto<br />
+      18 septiembre 2026
+    </div>
+  </header>
+
+  <h1>Estado de alcance</h1>
+  <p class="lead">Contraste del requerimiento funcional con lo implementado en la app Expo y en Supabase.</p>
+
+  <div class="legend">
+    <span class="pill"><span class="box done"></span> Listo</span>
+    <span class="pill"><span class="box partial"></span> Parcial</span>
+    <span class="pill"><span class="box todo"></span> Pendiente</span>
+  </div>
+
+  <h2>Auth y sesión</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Login con email y contraseña (Supabase Auth).</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Sesión persistente; se restaura al abrir la app.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Cerrar sesión desde perfil y menú. La cache local se mantiene.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Restablecer clave por email (código / enlace).</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Registro de cuenta.</span></li>
+    <li><span class="box partial"></span><span class="label partial-t">Parcial</span><span class="text">Roles en perfiles (técnico, supervisor, admin). El login ya no usa tecnico@demo.cl, pero no hay flujos distintos por rol en la app.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Magic link.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Editar nombre, teléfono y foto del técnico en Supabase.</span></li>
+  </ul>
+
+  <h2>Perfil</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Ver nombre, rol (Técnico de terreno), email e iniciales.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Contadores: finalizados, borradores y clientes visitados.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Listar levantamientos cuyo userId corresponde al trabajador, con ficha o borrador.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Recargar clientes, proyectos y levantamientos de demostración (el seed existe; se quitó del perfil).</span></li>
+  </ul>
+
+  <h2>Inicio / dashboard</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Estadísticas: clientes, proyectos activos, levantamientos realizados, borradores.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Acceso a nuevo levantamiento, continuar borradores, actividad reciente y proyectos recientes.</span></li>
+    <li><span class="box partial"></span><span class="label partial-t">Parcial</span><span class="text">Retomar un draft abre el asistente; el paso se calcula, pero casi siempre cae en Información / Condiciones / Sectores.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Saludo de bienvenida. Hoy el header muestra logo y perfil.</span></li>
+  </ul>
+
+  <h2>Clientes</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Búsqueda por nombre, contacto, teléfono, email o ciudad. Filtro Activos / Archivados.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Alta con razón social obligatoria, RUT, contacto, cargo, teléfono, email, dirección, ciudad y observaciones.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Modificar la ficha comercial de un cliente existente.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Ver datos, conteo de proyectos y levantamientos, listado, últimos levantamientos y archivar.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Archivar con confirmación. No se elimina. Deja de aparecer en altas.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Desde la ficha, crear un proyecto con el cliente ya asociado (clientId bloqueado).</span></li>
+  </ul>
+
+  <h2>Proyectos</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Búsqueda por nombre, cliente o ubicación. Filtro Todos / Activo / Pendiente / Finalizado.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Alta asociada a cliente. Nombre y cliente obligatorios. Código, dirección, ciudad, contacto de terreno, teléfono, estado, descripción y observaciones. Estado inicial: activo.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Modificar datos y estado (activo, pendiente, finalizado).</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Ver cliente, ubicación, contacto de terreno, estado, nuevo levantamiento, borradores e historial.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Abrir el alta de levantamiento con el proyecto preseleccionado.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Desde Levantamientos: cliente nuevo o existente + recinto (razón social, contacto opcional, nombre, ciudad).</span></li>
+  </ul>
+
+  <h2>Levantamientos</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Historial con búsqueda por código, proyecto, cliente o ubicación.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Filtros todos / borradores / finalizados. Sección aparte de borradores.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Filtros por tipo de servicio, estado malo/crítico y criticidad alta.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Seleccionar proyecto y tipo de servicio. Borrador LEV-AAAA-NNNN, userId del técnico y datos de servicio vacíos.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Wizard: 1 Información, 2 Condiciones, 3 Sectores, 4 Evidencia, 5 Observaciones, 6 Revisión. Barra de progreso y guardado local.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Información: cliente, proyecto, servicio, ubicación, técnico, fecha/hora, motivo de visita.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Alcance (completa / sectores / puntos críticos) y estado general (bueno, regular, malo, crítico).</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Epóxico / PU: superficie, sustrato, m², revestimiento existente, problemas, usos, exposiciones, temperatura y °C (PU).</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Cubiertas: tipo, m² y problemas típicos.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Corrosión: protección existente, tipo, estado del recubrimiento y exposiciones.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Sectores: alta, edición, duplicado y eliminación, con validación de al menos un sector con nombre si el alcance lo exige.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Elementos por tipo de servicio. En corrosión con alcance por sectores/puntos críticos se exige al menos un elemento.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Fotos desde cámara o galería, con permiso. Categoría y leyenda. A nivel de levantamiento, sector o elemento. Eliminar borra el archivo local.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Observaciones: conclusión, planta operativa, horario, acceso, maquinaria y comentarios de faena.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Revisión, validación, confirmación, estado completed con completedAt y pantalla de éxito.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">El borrador se guarda al editar. Toast en guardados explícitos.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Eliminar un draft con confirmación, incluyendo fotos locales.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Vista de solo lectura de la ficha técnica.</span></li>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Código LEV-{año}-{NNNN} único por año.</span></li>
+  </ul>
+
+  <h2>Sync, informe y cierre de producto</h2>
+  <ul>
+    <li><span class="box done"></span><span class="label done-t">Listo</span><span class="text">Crear y editar sin red; sincronizar clientes, proyectos, levantamientos y fotos con Supabase al recuperar conexión.</span></li>
+    <li><span class="box partial"></span><span class="label partial-t">Parcial</span><span class="text">No hay cola explícita (outbox) de fotos y registros; es write-through + reintento al hidratar.</span></li>
+    <li><span class="box partial"></span><span class="label partial-t">Parcial</span><span class="text">El técnico ve los suyos (RLS de dueño). Supervisor/admin no ve todos los de la organización.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Informe técnico PDF (cabecera, hallazgos, fotos, conclusión) para cliente o cotización.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Interfaz web propia para ver clientes, proyectos, levantamientos, fotos y técnicos.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Catálogo remoto (servicios, problemas, exposiciones, elementos) sin publicar una nueva app.</span></li>
+    <li><span class="box todo"></span><span class="label todo-t">Pendiente</span><span class="text">Recordar al técnico borradores sin cerrar (push o in-app).</span></li>
+  </ul>
+
+  <footer class="note">
+    <strong>Resumen.</strong> El flujo del técnico en terreno (auth, clientes, proyectos, wizard, fotos y sync básico) está cubierto.
+    Falta para producto: roles reales (supervisor/admin), edición de perfil, informe PDF, filtros avanzados, catálogo remoto, web de operación y avisos de borradores.
+  </footer>
+</body>
+</html>

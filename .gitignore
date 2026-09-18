@@ -48,3 +48,5 @@ example
 # agent instruction files (local only)
 AGENTS.md
 CLAUDE.md
+.agents/
+.claude/

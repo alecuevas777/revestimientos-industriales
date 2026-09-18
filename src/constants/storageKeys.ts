@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   surveys: '@ri/surveys',
   schema: '@ri/schema',
   rememberEmail: '@ri/remember-email',
+  workspace: (userId: string) => `@ri/workspace/${userId}`,
 } as const;
 
-export const SCHEMA_VERSION = '5';
+export const SCHEMA_VERSION = '6';

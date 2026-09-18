@@ -16,18 +16,11 @@ async function writeSeed() {
   ]);
 }
 
-export async function seedIfNeeded() {
-  const version = await AsyncStorage.getItem(STORAGE_KEYS.schema);
-  if (version === SCHEMA_VERSION) return;
-  await writeSeed();
-}
-
 export async function resetDemoData() {
   await writeSeed();
 }
 
 export async function loadAppData() {
-  await seedIfNeeded();
   const [clients, projects, surveys] = await Promise.all([getClients(), getProjects(), getSurveys()]);
   return { clients, projects, surveys };
 }
@@ -36,3 +29,4 @@ export { archiveClient, createClient, getClients, saveClients, updateClient } fr
 export { createProject, getProjects, saveProjects, updateProject } from './projectStorage';
 export { clearSession, getSession, saveSession } from './sessionStorage';
 export { createSurvey, deleteSurvey, emptyElement, emptySector, getSurveys, saveSurveys, upsertSurvey } from './surveyStorage';
+export { readWorkspaceCache, writeWorkspaceCache } from './workspaceCache';

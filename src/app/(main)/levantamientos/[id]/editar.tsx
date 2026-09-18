@@ -11,7 +11,7 @@ import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { WIZARD_STEPS } from '@/constants/labels';
 import { photoCategoriesForService } from '@/constants/options';
-import { useApp } from '@/context/AppProvider';
+import { useAppActions } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
 import { InfoStep } from '@/features/survey/InfoStep';
 import { NotesStep } from '@/features/survey/NotesStep';
@@ -19,6 +19,8 @@ import { ReviewStep } from '@/features/survey/ReviewStep';
 import { SectorsStep } from '@/features/survey/SectorsStep';
 import { ServiceConditionsStep } from '@/features/survey/ServiceConditionsStep';
 import { useActionLock } from '@/hooks/useActionLock';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { useEditorTick } from '@/hooks/useEditorTick';
 import { formatRelative } from '@/lib/format';
 import { push, replace, routeParam } from '@/lib/nav';
 import {
@@ -41,12 +43,14 @@ export default function EditSurveyScreen() {
     saveSurvey,
     addSector,
     duplicateSector,
+    removeSector,
     addPhoto,
     updatePhoto,
     removePhoto,
     completeSurvey,
     discardSurvey,
-  } = useApp();
+  } = useAppActions();
+  const tick = useEditorTick();
   const { session } = useAuth();
   const survey = getSurvey(routeParam(id) ?? '');
   const project = survey ? getProject(survey.projectId) : undefined;
@@ -58,6 +62,7 @@ export default function EditSurveyScreen() {
   const [savedAt, setSavedAt] = useState(survey?.updatedAt);
   const [errors, setErrors] = useState<string[]>([]);
   const run = useActionLock();
+  const { ask, modal } = useConfirmAction();
 
   useEffect(() => {
     if (survey?.status === 'completed') {
@@ -70,10 +75,11 @@ export default function EditSurveyScreen() {
     return `Guardado ${formatRelative(savedAt)}`;
   }, [savedAt]);
 
-  async function patch(partial: Partial<Survey>) {
+  function patch(partial: Partial<Survey>) {
     if (!survey) return;
-    await saveSurvey({ id: survey.id, ...partial }, true);
+    void saveSurvey({ id: survey.id, ...partial }, true);
     setSavedAt(new Date().toISOString());
+    tick();
   }
 
   if (!survey) {
@@ -86,6 +92,14 @@ export default function EditSurveyScreen() {
   }
 
   const draft = survey;
+
+  function confirmRemoveSector(sectorId: string) {
+    ask({
+      title: '¿Eliminar sector?',
+      message: 'Se perderán las observaciones, elementos y fotografías de este sector.',
+      onConfirm: () => removeSector(draft.id, sectorId),
+    });
+  }
 
   function next() {
     const nextErrors =
@@ -140,6 +154,7 @@ export default function EditSurveyScreen() {
             const copy = await duplicateSector(draft.id, sectorId);
             if (copy) push(`/levantamientos/${draft.id}/sector/${copy.id}`);
           }}
+          onRemove={confirmRemoveSector}
         />
       ) : null}
 
@@ -153,9 +168,15 @@ export default function EditSurveyScreen() {
             sectors={draft.sectors}
             categories={photoCategoriesForService(draft.serviceType)}
             editable
-            onAdd={(uri) => void addPhoto({ surveyId: draft.id, uri, category: 'overview' })}
-            onUpdate={(photoId, photoPatch) => void updatePhoto(draft.id, photoId, photoPatch)}
-            onRemove={(photoId) => void removePhoto(draft.id, photoId)}
+            onAdd={(uri) => void addPhoto({ surveyId: draft.id, uri, category: 'overview' }).then(() => tick())}
+            onUpdate={(photoId, photoPatch) => {
+              void updatePhoto(draft.id, photoId, photoPatch);
+              tick();
+            }}
+            onRemove={(photoId) => {
+              void removePhoto(draft.id, photoId);
+              tick();
+            }}
           />
         </View>
       ) : null}
@@ -169,6 +190,7 @@ export default function EditSurveyScreen() {
           client={client}
           technician={session?.name ?? 'Técnico'}
           errors={errors}
+          onRemoveSector={confirmRemoveSector}
         />
       ) : null}
 
@@ -227,6 +249,7 @@ export default function EditSurveyScreen() {
           replace('/levantamientos');
         }}
       />
+      {modal}
     </Screen>
   );
 }

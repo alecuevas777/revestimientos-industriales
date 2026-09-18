@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { APP_FOOTER, APP_NAME_FULL, APP_TAGLINE, BrandImages } from '@/constants/brand';
+import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 
 type Props = {
   titleLead: string;
@@ -41,12 +42,15 @@ export function AuthScreen({
       <SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']}>
         <KeyboardAvoidingView
           className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={keyboardAvoidingBehavior}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
           <ScrollView
             className="flex-1"
             contentContainerClassName="grow justify-between px-6 py-4"
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
             showsVerticalScrollIndicator={false}
           >
             <View>

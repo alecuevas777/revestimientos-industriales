@@ -12,6 +12,8 @@ import {
   persistClient,
   persistProject,
   persistSurvey,
+  removeClient as removeClientRecord,
+  removeProject as removeProjectRecord,
   removeSurvey,
 } from '@/repositories/workspace';
 import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
@@ -51,8 +53,11 @@ type AppActionsValue = {
   addClient: (draft: ClientDraft) => Promise<Client>;
   editClient: (id: string, draft: ClientDraft) => Promise<Client | null>;
   archiveClient: (id: string) => Promise<void>;
+  restoreClient: (id: string) => Promise<void>;
+  removeClient: (id: string) => Promise<void>;
   addProject: (draft: ProjectDraft) => Promise<Project>;
   editProject: (id: string, draft: ProjectDraft) => Promise<Project | null>;
+  removeProject: (id: string) => Promise<void>;
   ensureClientAndProject: (setup: ClientProjectSetup) => Promise<{ client: Client; project: Project }>;
   startSurvey: (projectId: string, serviceType: ServiceType) => Promise<Survey>;
   saveSurvey: (survey: Pick<Survey, 'id'> & Partial<Survey>, silent?: boolean) => Promise<Survey>;
@@ -92,8 +97,11 @@ const APP_ACTION_KEYS: (keyof AppActionsValue)[] = [
   'addClient',
   'editClient',
   'archiveClient',
+  'restoreClient',
+  'removeClient',
   'addProject',
   'editProject',
+  'removeProject',
   'ensureClientAndProject',
   'startSurvey',
   'saveSurvey',
@@ -212,14 +220,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return current.id;
   }
 
+  function writeSurveyMemory(next: Survey) {
+    const current = surveysRef.current;
+    const existing = current.find((item) => item.id === next.id);
+    const merged = existing ? mergeRemotePhotoPaths(next, existing) : next;
+    surveysRef.current = existing
+      ? current.map((item) => (item.id === next.id ? merged : item))
+      : [merged, ...current];
+    return merged;
+  }
+
+  function publishSurveys() {
+    setSurveys(surveysRef.current);
+  }
+
   function replaceSurvey(next: Survey) {
-    setSurveys((current) => {
-      const existing = current.find((item) => item.id === next.id);
-      const merged = existing ? mergeRemotePhotoPaths(next, existing) : next;
-      const list = existing ? current.map((item) => (item.id === next.id ? merged : item)) : [merged, ...current];
-      surveysRef.current = list;
-      return list;
-    });
+    writeSurveyMemory(next);
+    publishSurveys();
   }
 
   function applyPhotoPatch(surveyId: string, photoId: string, patch: Partial<PhotoEvidence>) {
@@ -276,6 +293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   async function flushAllSurveys() {
     const ids = new Set([...pendingRemote.current, ...persistChains.current.keys()]);
     await Promise.all([...ids].map((id) => runRemotePersist(id, true)));
+    publishSurveys();
   }
 
   flushAllRef.current = flushAllSurveys;
@@ -319,10 +337,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const stamped = { ...survey, updatedAt: new Date().toISOString() };
     const previous = surveysRef.current.find((item) => item.id === stamped.id);
     noteRemovedChildren(stamped.id, removedSurveyChildren(previous, stamped));
-    replaceSurvey(stamped);
-    await persistSurvey(userId, stamped, { remote: false });
+    writeSurveyMemory(stamped);
 
     if (flush) {
+      publishSurveys();
+      await persistSurvey(userId, stamped, { remote: false });
       await runRemotePersist(stamped.id, silent);
     } else {
       pendingRemote.current.add(stamped.id);
@@ -331,11 +350,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       persistTimers.current.set(
         stamped.id,
         setTimeout(() => {
+          publishSurveys();
           void runRemotePersist(stamped.id, silent);
-        }, 600),
+        }, 500),
       );
     }
     return surveysRef.current.find((item) => item.id === stamped.id) ?? stamped;
+  }
+
+  async function dropSurveyState(id: string) {
+    cancelledSurveys.current.add(id);
+    clearRemovedChildren(id);
+    const timer = persistTimers.current.get(id);
+    if (timer) clearTimeout(timer);
+    persistTimers.current.delete(id);
+    pendingRemote.current.delete(id);
+    await (persistChains.current.get(id) ?? Promise.resolve()).catch(() => undefined);
+    const survey = surveysRef.current.find((item) => item.id === id);
+    if (survey) {
+      for (const photo of collectPhotos(survey)) cancelPhotoUpload(photo.id);
+    }
   }
 
   const actions: AppActionsValue = {
@@ -377,6 +411,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(result.synced ? 'Cliente archivado' : 'Cliente archivado en este dispositivo');
       },
+      restoreClient: async (id) => {
+        const userId = requireUserId();
+        const current = clientsRef.current.find((item) => item.id === id);
+        if (!current) return;
+        const client: Client = {
+          ...current,
+          archived: false,
+          archivedAt: undefined,
+          updatedAt: new Date().toISOString(),
+        };
+        const result = await persistClient(userId, client);
+        setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
+        showToast(result.synced ? 'Cliente restaurado' : 'Cliente restaurado en este dispositivo');
+      },
+      removeClient: async (id) => {
+        const userId = requireUserId();
+        const projectIds = new Set(
+          projectsRef.current.filter((project) => project.clientId === id).map((project) => project.id),
+        );
+        const related = surveysRef.current.filter((survey) => projectIds.has(survey.projectId));
+        for (const survey of related) {
+          await dropSurveyState(survey.id);
+        }
+        const result = await removeClientRecord(userId, id);
+        setSurveys((list) => list.filter((survey) => !projectIds.has(survey.projectId)));
+        setProjects((list) => list.filter((project) => project.clientId !== id));
+        setClients((list) => list.filter((client) => client.id !== id));
+        showToast(result.synced ? 'Cliente eliminado' : 'Cliente eliminado en este dispositivo');
+      },
       addProject: async (draft) => {
         const userId = requireUserId();
         const project = buildProject(draft);
@@ -394,6 +457,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setProjects((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(savedToast(result.synced, 'Cambios guardados'));
         return result.value;
+      },
+      removeProject: async (id) => {
+        const userId = requireUserId();
+        const related = surveysRef.current.filter((survey) => survey.projectId === id);
+        for (const survey of related) {
+          await dropSurveyState(survey.id);
+        }
+        const result = await removeProjectRecord(userId, id);
+        setSurveys((list) => list.filter((survey) => survey.projectId !== id));
+        setProjects((list) => list.filter((project) => project.id !== id));
+        showToast(result.synced ? 'Proyecto eliminado' : 'Proyecto eliminado en este dispositivo');
       },
       ensureClientAndProject: async (setup) => {
         const userId = requireUserId();
@@ -462,13 +536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       discardSurvey: async (id) => {
         const userId = requireUserId();
-        cancelledSurveys.current.add(id);
-        clearRemovedChildren(id);
-        const timer = persistTimers.current.get(id);
-        if (timer) clearTimeout(timer);
-        persistTimers.current.delete(id);
-        pendingRemote.current.delete(id);
-        await (persistChains.current.get(id) ?? Promise.resolve()).catch(() => undefined);
+        await dropSurveyState(id);
         await removeSurvey(userId, id);
         setSurveys((current) => current.filter((item) => item.id !== id));
         showToast('Levantamiento eliminado');

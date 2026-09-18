@@ -8,7 +8,12 @@
     "scheme": "vicast",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "es",
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleLocalizations": ["es"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +22,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "bundler": "metro",
@@ -39,12 +45,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "VICAST necesita acceso a tus fotos para el registro fotográfico del levantamiento.",
-          "cameraPermission": "VICAST necesita la cámara para documentar superficies en terreno."
+          "photosPermission": "VICAST necesita acceder a tus fotos para adjuntar evidencia al levantamiento.",
+          "cameraPermission": "VICAST necesita la cámara para fotografiar las superficies en terreno.",
+          "microphonePermission": false
         }
-      ],
-      "expo-sqlite"
+      ]
     ],
+    "locales": {
+      "es": "./locales/es.json"
+    },
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true

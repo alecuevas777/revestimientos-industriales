@@ -1,4 +1,8 @@
-import { Pressable, Text, View } from 'react-native';
+import { memo, useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { QuietPressable } from '@/components/ui/QuietPressable';
+import { Colors } from '@/constants/theme';
 
 export type ChoiceOption<T extends string> = {
   value: T;
@@ -26,47 +30,79 @@ type MultiProps<T extends string> = Common<T> & {
 export function FieldLabel({ label, hint }: { label?: string; hint?: string }) {
   if (!label && !hint) return null;
   return (
-    <View className="gap-1">
-      {label ? <Text className="text-sm font-semibold text-ink">{label}</Text> : null}
-      {hint ? <Text className="text-sm leading-5 text-muted">{hint}</Text> : null}
+    <View style={styles.labelBox}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
 
-export function ChoiceChips<T extends string>(props: SingleProps<T> | MultiProps<T>) {
-  const selected = (option: T) =>
-    props.values ? props.values.includes(option) : props.value === option;
+function ChoiceChipsInner<T extends string>(props: SingleProps<T> | MultiProps<T>) {
+  const multi = Boolean(props.values);
+  const incomingKey = multi ? (props.values ?? []).join('|') : (props.value ?? '');
+  const [pickedKey, setPickedKey] = useState(incomingKey);
+
+  useEffect(() => {
+    setPickedKey(incomingKey);
+  }, [incomingKey]);
+
+  const picked = pickedKey ? (pickedKey.split('|') as T[]) : [];
 
   function press(option: T) {
-    if (props.values) {
-      const exists = props.values.includes(option);
-      props.onChange(exists ? props.values.filter((item) => item !== option) : [...props.values, option]);
+    if (multi) {
+      const next = picked.includes(option) ? picked.filter((item) => item !== option) : [...picked, option];
+      setPickedKey(next.join('|'));
+      (props as MultiProps<T>).onChange(next);
       return;
     }
-    props.onChange(option);
+    setPickedKey(option);
+    (props as SingleProps<T>).onChange(option);
   }
 
   return (
-    <View className="gap-2">
+    <View style={styles.wrap}>
       <FieldLabel label={props.label} hint={props.hint} />
-      <View className="flex-row flex-wrap gap-2">
+      <View style={styles.row}>
         {props.options.map((option) => {
-          const active = selected(option.value);
+          const active = multi ? picked.includes(option.value) : pickedKey === option.value;
           return (
-            <Pressable
+            <QuietPressable
               key={option.value}
               onPress={() => press(option.value)}
-              className={`min-h-[44px] justify-center rounded-full px-4 ${
-                active ? 'bg-brand' : 'border border-line bg-white'
-              }`}
+              style={[styles.chip, active ? styles.chipOn : styles.chipOff]}
             >
-              <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-ink'}`}>
+              <Text style={[styles.chipText, active ? styles.chipTextOn : styles.chipTextOff]}>
                 {option.label}
               </Text>
-            </Pressable>
+            </QuietPressable>
           );
         })}
       </View>
     </View>
   );
 }
+
+export const ChoiceChips = memo(ChoiceChipsInner) as typeof ChoiceChipsInner;
+
+const styles = StyleSheet.create({
+  wrap: { gap: 8 },
+  labelBox: { gap: 4 },
+  label: { fontSize: 14, fontWeight: '600', color: Colors.ink },
+  hint: { fontSize: 14, lineHeight: 20, color: Colors.muted },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+  },
+  chipOn: { backgroundColor: Colors.brand },
+  chipOff: {
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.line,
+  },
+  chipText: { fontSize: 14, fontWeight: '600' },
+  chipTextOn: { color: '#FFFFFF' },
+  chipTextOff: { color: Colors.ink },
+});

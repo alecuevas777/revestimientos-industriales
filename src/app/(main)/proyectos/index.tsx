@@ -12,6 +12,7 @@ import { FilterChips } from '@/components/ui/FilterChips';
 import { Screen } from '@/components/ui/Screen';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { useAppActions, useAppData } from '@/context/AppProvider';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { indexById, lastSurveyAtByProjectId, surveyCountByProjectId } from '@/lib/selectors';
 import type { Project, ProjectStatus } from '@/types';
 
@@ -21,6 +22,7 @@ export default function ProjectsScreen() {
   const { clients, projects, surveys, refreshing } = useAppData();
   const { refreshWorkspace } = useAppActions();
   const [query, setQuery] = useState('');
+  const search = useDebouncedValue(query);
   const [status, setStatus] = useState<Filter>('all');
 
   const clientsById = useMemo(() => indexById(clients), [clients]);
@@ -28,7 +30,7 @@ export default function ProjectsScreen() {
   const lastSurveyAt = useMemo(() => lastSurveyAtByProjectId(surveys), [surveys]);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = search.trim().toLowerCase();
     return projects.filter((project) => {
       const client = clientsById.get(project.clientId);
       const matchesStatus = status === 'all' || project.status === status;
@@ -37,19 +39,19 @@ export default function ProjectsScreen() {
         .some((value) => value!.toLowerCase().includes(term));
       return matchesStatus && matchesQuery;
     });
-  }, [clientsById, projects, query, status]);
+  }, [clientsById, projects, search, status]);
 
   return (
     <Screen scroll={false} padded={false}>
       <CatalogList
         data={filtered}
-        extraData={`${status}:${query}:${surveys.length}`}
+        extraData={`${status}:${search}:${surveys.length}`}
         keyExtractor={(project) => project.id}
         refreshing={refreshing}
         onRefresh={refreshWorkspace}
         header={
           <>
-            <TabBrandHeader title="Proyectos" subtitle="Gestiona tus proyectos y sigue su progreso" />
+            <TabBrandHeader title="Proyectos" subtitle="Plantas o recintos. Cada uno puede tener varios levantamientos" />
             <View className="gap-3">
               <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar proyecto, cliente o ubicación" />
               <FilterChips
@@ -73,14 +75,14 @@ export default function ProjectsScreen() {
         }
         empty={
           <EmptyState
-            title={query || status !== 'all' ? 'Sin resultados' : 'Aún no hay proyectos'}
+            title={search || status !== 'all' ? 'Sin resultados' : 'Aún no hay proyectos'}
             description={
-              query || status !== 'all'
+              search || status !== 'all'
                 ? 'Cambia el filtro o el texto de búsqueda.'
                 : 'Crea un proyecto asociado a un cliente para registrar levantamientos.'
             }
             action={
-              query || status !== 'all' ? undefined : (
+              search || status !== 'all' ? undefined : (
                 <Button
                   label="Nuevo proyecto"
                   className="rounded-full"

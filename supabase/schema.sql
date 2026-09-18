@@ -346,7 +346,6 @@ using (id = (select auth.uid()))
 with check (id = (select auth.uid()));
 
 -- Clientes / proyectos: catálogo compartido del equipo (fase 1).
--- Inserta con creado_por = usuario actual. No hay DELETE: se archiva.
 create policy clientes_select_equipo
 on public.clientes for select to authenticated
 using (true);
@@ -372,6 +371,14 @@ create policy proyectos_update_equipo
 on public.proyectos for update to authenticated
 using (true)
 with check (true);
+
+create policy clientes_delete_equipo
+on public.clientes for delete to authenticated
+using (true);
+
+create policy proyectos_delete_equipo
+on public.proyectos for delete to authenticated
+using (true);
 
 -- Levantamientos: solo el técnico dueño
 create policy levantamientos_select_propio

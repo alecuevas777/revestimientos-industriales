@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -19,8 +19,8 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
 
   function handleSubmit() {
     const nextErrors = {
-      client: clientName.trim() ? undefined : 'Ingresa el cliente.',
-      project: projectName.trim() ? undefined : 'Ingresa el proyecto o recinto.',
+      client: clientName.trim() ? undefined : 'Ingresa el nombre del cliente.',
+      project: projectName.trim() ? undefined : 'Ingresa el nombre del proyecto.',
     };
     setErrors(nextErrors);
     if (nextErrors.client || nextErrors.project) return;
@@ -44,9 +44,14 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
 
   return (
     <View className="gap-5">
+      <Text className="text-sm leading-5 text-muted">
+        El cliente es la empresa. El proyecto es la planta o recinto. Un cliente puede tener varios proyectos.
+      </Text>
       <View className="gap-4">
+        <Text className="text-base font-semibold text-ink">Cliente</Text>
         <Input
-          label="Razón social"
+          label="Nombre del cliente"
+          hint="Empresa o razón social. Distinto al nombre del proyecto."
           value={clientName}
           onChangeText={(value) => {
             setClientName(value);
@@ -57,6 +62,7 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
         />
         <Input
           label="Contacto (opcional)"
+          hint="Persona de la empresa, no el nombre del cliente."
           value={contactName}
           onChangeText={setContactName}
           placeholder="María Soto"
@@ -64,8 +70,10 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
       </View>
 
       <View className="gap-4">
+        <Text className="text-base font-semibold text-ink">Proyecto</Text>
         <Input
-          label="Proyecto o recinto"
+          label="Nombre del proyecto"
+          hint="Planta, bodega o recinto. Distinto al nombre del cliente."
           value={projectName}
           onChangeText={(value) => {
             setProjectName(value);

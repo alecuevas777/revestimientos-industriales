@@ -23,9 +23,10 @@ import {
   ROOF_PROBLEM_OPTIONS,
 } from '@/constants/options';
 import { exposuresForService } from '@/constants/options';
-import { useApp } from '@/context/AppProvider';
+import { useAppActions } from '@/context/AppProvider';
 import { elementTitle } from '@/lib/display';
 import { routeParam } from '@/lib/nav';
+import { useEditorTick } from '@/hooks/useEditorTick';
 import type { ProblemType, Severity, SurfaceCondition, SurveyElement } from '@/types';
 
 const CONDITIONS: SurfaceCondition[] = ['good', 'regular', 'bad', 'critical'];
@@ -37,7 +38,8 @@ export default function ElementEditorScreen() {
     sectorId: string;
     elementId: string;
   }>();
-  const { getSurvey, saveElement, removeElement, addPhoto, updatePhoto, removePhoto } = useApp();
+  const { getSurvey, saveElement, removeElement, addPhoto, updatePhoto, removePhoto } = useAppActions();
+  const tick = useEditorTick();
   const surveyId = routeParam(id) ?? '';
   const currentSectorId = routeParam(sectorId) ?? '';
   const currentElementId = routeParam(elementId) ?? '';
@@ -59,6 +61,7 @@ export default function ElementEditorScreen() {
 
   function patch(partial: Partial<SurveyElement>) {
     void saveElement(surveyId, { id: currentElementId, ...partial });
+    tick();
   }
 
   return (
@@ -147,10 +150,16 @@ export default function ElementEditorScreen() {
             categories={photoCategoriesForService(survey.serviceType)}
             editable
             onAdd={(uri) =>
-              void addPhoto({ surveyId, sectorId: sector.id, elementId: element.id, uri })
+              void addPhoto({ surveyId, sectorId: sector.id, elementId: element.id, uri }).then(() => tick())
             }
-            onUpdate={(photoId, photoPatch) => void updatePhoto(surveyId, photoId, photoPatch)}
-            onRemove={(photoId) => void removePhoto(surveyId, photoId)}
+            onUpdate={(photoId, photoPatch) => {
+              void updatePhoto(surveyId, photoId, photoPatch);
+              tick();
+            }}
+            onRemove={(photoId) => {
+              void removePhoto(surveyId, photoId);
+              tick();
+            }}
           />
         </View>
 

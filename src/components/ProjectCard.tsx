@@ -2,8 +2,12 @@ import { Building2, ChevronRight, Clock, Factory, Layers, MapPin, Warehouse } fr
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
+import { CardActions } from '@/components/ui/CardActions';
 import { PROJECT_STATUS_LABELS } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
+import { useAppActions } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { projectDeleteMessage } from '@/lib/crud';
 import { formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
 import type { Project } from '@/types';
@@ -28,11 +32,17 @@ function ProjectGlyph({ name }: { name: string }) {
 }
 
 export function ProjectCard({ project, clientName, surveyCount, lastSurveyAt }: Props) {
+  const { removeProject } = useAppActions();
+  const { ask, modal } = useConfirmAction();
   const place = [project.city, project.location].filter(Boolean).join(', ');
 
+  function open() {
+    push(`/proyectos/${project.id}`);
+  }
+
   return (
-    <Pressable onPress={() => push(`/proyectos/${project.id}`)}>
-      <Card>
+    <Card>
+      <Pressable onPress={open}>
         <View className="flex-row items-start gap-3">
           <View className="h-12 w-12 items-center justify-center rounded-xl border border-line bg-canvas">
             <ProjectGlyph name={project.name} />
@@ -79,7 +89,18 @@ export function ProjectCard({ project, clientName, surveyCount, lastSurveyAt }: 
             </Text>
           </View>
         </View>
-      </Card>
-    </Pressable>
+      </Pressable>
+      <CardActions
+        onEdit={() => push(`/proyectos/editar/${project.id}`)}
+        onDelete={() =>
+          ask({
+            title: '¿Eliminar proyecto?',
+            message: projectDeleteMessage(surveyCount),
+            onConfirm: () => removeProject(project.id),
+          })
+        }
+      />
+      {modal}
+    </Card>
   );
 }

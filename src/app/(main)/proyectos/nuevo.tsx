@@ -17,7 +17,7 @@ export default function NewProjectScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Nuevo proyecto" subtitle="Debe quedar asociado a un cliente" />
+      <ScreenHeader title="Nuevo proyecto" subtitle="Recinto o planta asociado a un cliente" />
       {clients.length === 0 ? (
         <EmptyState
           title="Primero crea un cliente"

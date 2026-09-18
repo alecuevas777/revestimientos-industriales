@@ -1,10 +1,12 @@
 import { Building2, ChevronRight, Clock, Layers } from 'lucide-react-native';
 import { Pressable, Text, View, type DimensionValue } from 'react-native';
 
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardActions } from '@/components/ui/CardActions';
 import { SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
+import { useAppActions } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
 import { formatArea, formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
 import { surveyArea, surveyProgress } from '@/lib/survey';
@@ -17,6 +19,8 @@ type Props = {
 };
 
 export function DraftCard({ survey, projectName, onContinue }: Props) {
+  const { discardSurvey } = useAppActions();
+  const { ask, modal } = useConfirmAction();
   const { done, total } = surveyProgress(survey);
   const width = `${Math.round((done / total) * 100)}%` as DimensionValue;
   const continueTo = onContinue ?? (() => push(`/levantamientos/${survey.id}/editar`));
@@ -57,9 +61,18 @@ export function DraftCard({ survey, projectName, onContinue }: Props) {
           </View>
         </View>
       </Pressable>
-      <View className="mt-4">
-        <Button label="Continuar" className="rounded-full" onPress={continueTo} />
-      </View>
+      <CardActions
+        editLabel="Continuar"
+        onEdit={continueTo}
+        onDelete={() =>
+          ask({
+            title: '¿Eliminar borrador?',
+            message: 'Se eliminará este levantamiento incompleto. Esta acción no se puede deshacer.',
+            onConfirm: () => discardSurvey(survey.id),
+          })
+        }
+      />
+      {modal}
     </Card>
   );
 }

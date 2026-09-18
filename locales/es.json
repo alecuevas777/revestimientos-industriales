@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "VICAST usa la cámara para fotografiar las superficies en terreno.",
+    "NSPhotoLibraryUsageDescription": "VICAST accede a tus fotos para adjuntar evidencia al levantamiento.",
+    "NSPhotoLibraryAddUsageDescription": "VICAST puede guardar fotografías del levantamiento en tu galería.",
+    "NSMicrophoneUsageDescription": "VICAST no graba audio al tomar fotografías."
+  }
+}

@@ -2,7 +2,11 @@ import { Building2, ChevronRight, Clock, FileText, Layers, Phone, User } from 'l
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
+import { CardActions } from '@/components/ui/CardActions';
 import { Colors } from '@/constants/theme';
+import { useAppActions } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { clientDeleteMessage } from '@/lib/crud';
 import { formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
 import type { Client } from '@/types';
@@ -15,9 +19,16 @@ type Props = {
 };
 
 export function ClientCard({ client, projectCount, surveyCount, lastActivity }: Props) {
+  const { removeClient, restoreClient } = useAppActions();
+  const { ask, modal } = useConfirmAction();
+
+  function open() {
+    push(`/clientes/${client.id}`);
+  }
+
   return (
-    <Pressable onPress={() => push(`/clientes/${client.id}`)}>
-      <Card>
+    <Card>
+      <Pressable onPress={open}>
         <View className="flex-row items-start gap-3">
           <View className="h-12 w-12 items-center justify-center rounded-xl border border-line bg-canvas">
             <Building2 size={22} color={Colors.ink} />
@@ -61,7 +72,19 @@ export function ClientCard({ client, projectCount, surveyCount, lastActivity }: 
             </View>
           ) : null}
         </View>
-      </Card>
-    </Pressable>
+      </Pressable>
+      <CardActions
+        onEdit={() => push(`/clientes/editar/${client.id}`)}
+        onRestore={client.archived ? () => void restoreClient(client.id) : undefined}
+        onDelete={() =>
+          ask({
+            title: '¿Eliminar cliente?',
+            message: clientDeleteMessage(projectCount, surveyCount),
+            onConfirm: () => removeClient(client.id),
+          })
+        }
+      />
+      {modal}
+    </Card>
   );
 }

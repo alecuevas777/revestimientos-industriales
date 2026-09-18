@@ -19,3 +19,8 @@ export async function upsertClient(client: Client, userId: string) {
   const { error } = await supabase.from('clientes').upsert(row, { onConflict: 'id' });
   if (error) throw new RemoteError(remoteMessage(error, 'No se pudo guardar el cliente.'), error);
 }
+
+export async function deleteClient(clientId: string) {
+  const { error } = await supabase.from('clientes').delete().eq('id', clientId);
+  if (error) throw new RemoteError(remoteMessage(error, 'No se pudo eliminar el cliente.'), error);
+}

@@ -60,6 +60,7 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
     <View className="gap-4 pb-8">
       <Input
         label="Nombre del proyecto"
+        hint="Planta o recinto. Distinto al nombre del cliente."
         value={name}
         onChangeText={(value) => {
           setName(value);
@@ -71,6 +72,7 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
 
       <View className="gap-2">
         <Text className="text-sm font-semibold text-ink">Cliente</Text>
+        <Text className="text-sm leading-5 text-muted">La empresa dueña de este proyecto.</Text>
         {errors.clientId ? <Text className="text-sm text-danger">{errors.clientId}</Text> : null}
         <View className="gap-2">
           {clients.filter((client) => !client.archived || client.id === clientId).map((client) => (

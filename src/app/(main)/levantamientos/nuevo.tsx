@@ -85,7 +85,7 @@ export default function NewSurveyScreen() {
           />
         ) : (
           <Text className="text-sm leading-5 text-muted">
-            Crea el cliente y su proyecto en un solo paso. Después eliges el servicio.
+            Crea el cliente (empresa) y un proyecto (planta o recinto) con nombres distintos. Después eliges el servicio.
           </Text>
         )}
 
@@ -109,7 +109,7 @@ export default function NewSurveyScreen() {
           <View className="gap-3">
             <Text className="text-sm font-semibold text-ink">Cliente y proyecto</Text>
             <Text className="text-sm leading-5 text-muted">
-              Solo lo esencial. Quedan asociados y listos para este levantamiento.
+              Primero la empresa, después el recinto. Un cliente puede tener varios proyectos, y un proyecto varios levantamientos.
             </Text>
             {projectId ? (
               <View className="rounded-2xl border border-line bg-white px-4 py-3">

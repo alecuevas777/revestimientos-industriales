@@ -12,9 +12,10 @@ type Props = {
   error?: string;
   onAdd: () => void;
   onDuplicate?: (sectorId: string) => void;
+  onRemove?: (sectorId: string) => void;
 };
 
-export function SectorsStep({ survey, error, onAdd, onDuplicate }: Props) {
+export function SectorsStep({ survey, error, onAdd, onDuplicate, onRemove }: Props) {
   const required = surveyNeedsSector(survey);
 
   return (
@@ -44,6 +45,7 @@ export function SectorsStep({ survey, error, onAdd, onDuplicate }: Props) {
             serviceType={survey.serviceType}
             onPress={() => push(`/levantamientos/${survey.id}/sector/${item.id}`)}
             onDuplicate={onDuplicate ? () => onDuplicate(item.id) : undefined}
+            onDelete={onRemove ? () => onRemove(item.id) : undefined}
           />
         ))
       )}

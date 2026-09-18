@@ -2,8 +2,11 @@ import { Camera, ChevronRight, ClipboardList, Layers, MapPin } from 'lucide-reac
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
+import { CardActions } from '@/components/ui/CardActions';
 import { SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
+import { useAppActions } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
 import { formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
 import { elementCount, photoCount } from '@/lib/survey';
@@ -26,17 +29,21 @@ export function SurveyCard({
   compact,
   technician,
 }: Props) {
+  const { discardSurvey } = useAppActions();
+  const { ask, modal } = useConfirmAction();
   const photos = photoCount(survey);
   const elements = elementCount(survey);
   const place = [clientName, location].filter(Boolean).join(' · ');
+  const editorHref = `/levantamientos/${survey.id}/editar`;
+  const detailHref = `/levantamientos/${survey.id}`;
+
+  function open() {
+    push(survey.status === 'draft' ? editorHref : detailHref);
+  }
 
   return (
-    <Pressable
-      onPress={() =>
-        push(survey.status === 'draft' ? `/levantamientos/${survey.id}/editar` : `/levantamientos/${survey.id}`)
-      }
-    >
-      <Card>
+    <Card>
+      <Pressable onPress={open}>
         <View className="flex-row items-start gap-3">
           <View className="h-12 w-12 items-center justify-center rounded-xl border border-line bg-canvas">
             <ClipboardList size={22} color={Colors.ink} />
@@ -95,7 +102,19 @@ export function SurveyCard({
             {formatRelative(survey.completedAt ?? survey.updatedAt)}
           </Text>
         ) : null}
-      </Card>
-    </Pressable>
+      </Pressable>
+      <CardActions
+        editLabel={survey.status === 'draft' ? 'Editar' : 'Ver / editar'}
+        onEdit={open}
+        onDelete={() =>
+          ask({
+            title: '¿Eliminar levantamiento?',
+            message: 'Se borrará este registro. Esta acción no se puede deshacer.',
+            onConfirm: () => discardSurvey(survey.id),
+          })
+        }
+      />
+      {modal}
+    </Card>
   );
 }

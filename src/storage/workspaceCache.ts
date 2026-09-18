@@ -6,10 +6,17 @@ import { readJson, writeJson } from './json';
 import { getProjects } from './projectStorage';
 import { getSurveys } from './surveyStorage';
 
+export type DeletedIds = {
+  clients: string[];
+  projects: string[];
+  surveys: string[];
+};
+
 export type WorkspaceSnapshot = {
   clients: Client[];
   projects: Project[];
   surveys: Survey[];
+  deletedIds?: DeletedIds;
 };
 
 export const EMPTY_WORKSPACE: WorkspaceSnapshot = {

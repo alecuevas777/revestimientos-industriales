@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
+import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 
 type Props = {
   children: ReactNode;
@@ -41,14 +42,16 @@ export function Screen({
     >
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={keyboardAvoidingBehavior}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
         {scroll ? (
           <ScrollView
             className="flex-1"
             contentContainerClassName={bottomSafe ? 'grow pb-6' : 'grow pb-24'}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
             showsVerticalScrollIndicator={false}
             refreshControl={refreshControl}
           >

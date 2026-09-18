@@ -15,6 +15,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useAppActions, useAppData } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { indexById } from '@/lib/selectors';
 import type { Survey } from '@/types';
 
@@ -25,6 +26,7 @@ export default function SurveysScreen() {
   const { refreshWorkspace } = useAppActions();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
+  const search = useDebouncedValue(query);
   const [filter, setFilter] = useState<Filter>('all');
 
   const projectsById = useMemo(() => indexById(projects), [projects]);
@@ -39,7 +41,7 @@ export default function SurveysScreen() {
   );
 
   const visible = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = search.trim().toLowerCase();
     return surveys
       .filter((survey) => {
         if (filter === 'draft' || filter === 'completed') return survey.status === filter;
@@ -53,19 +55,19 @@ export default function SurveysScreen() {
           .some((value) => value!.toLowerCase().includes(term));
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [clientsById, filter, projectsById, query, surveys]);
+  }, [clientsById, filter, projectsById, search, surveys]);
 
-  const showDraftsApart = filter === 'all' && !query && drafts.length > 0;
+  const showDraftsApart = filter === 'all' && !search && drafts.length > 0;
   const previewDrafts = drafts.slice(0, 2);
   const history = showDraftsApart ? visible.filter((survey) => survey.status !== 'draft') : visible;
-  const emptyCatalog = surveys.length === 0 && !query && filter === 'all';
+  const emptyCatalog = surveys.length === 0 && !search && filter === 'all';
   const noResults = history.length === 0 && !showDraftsApart;
 
   return (
     <Screen scroll={false} padded={false}>
       <CatalogList
         data={history}
-        extraData={`${filter}:${query}:${session?.name ?? ''}`}
+        extraData={`${filter}:${search}:${session?.name ?? ''}`}
         keyExtractor={(survey) => survey.id}
         refreshing={refreshing}
         onRefresh={refreshWorkspace}

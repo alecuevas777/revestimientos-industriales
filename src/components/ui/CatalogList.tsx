@@ -40,6 +40,7 @@ export function CatalogList<T>({
       contentContainerClassName="grow px-5 py-4 pb-8"
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
       initialNumToRender={8}
       maxToRenderPerBatch={8}

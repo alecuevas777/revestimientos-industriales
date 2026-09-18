@@ -12,6 +12,7 @@ import { FilterChips } from '@/components/ui/FilterChips';
 import { Screen } from '@/components/ui/Screen';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { useAppActions, useAppData } from '@/context/AppProvider';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { lastActivityByClientId, projectCountByClientId, surveyCountByClientId } from '@/lib/selectors';
 import type { Client } from '@/types';
 
@@ -21,6 +22,7 @@ export default function ClientsScreen() {
   const { clients, projects, surveys, refreshing } = useAppData();
   const { refreshWorkspace } = useAppActions();
   const [query, setQuery] = useState('');
+  const search = useDebouncedValue(query);
   const [filter, setFilter] = useState<Filter>('active');
 
   const projectCounts = useMemo(() => projectCountByClientId(projects), [projects]);
@@ -31,7 +33,7 @@ export default function ClientsScreen() {
   );
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = search.trim().toLowerCase();
     return clients.filter((client) => {
       const matchesArchive = filter === 'archived' ? client.archived : !client.archived;
       const matchesQuery = [client.name, client.contactName, client.phone, client.email, client.city]
@@ -39,19 +41,19 @@ export default function ClientsScreen() {
         .some((value) => value!.toLowerCase().includes(term));
       return matchesArchive && matchesQuery;
     });
-  }, [clients, filter, query]);
+  }, [clients, filter, search]);
 
   return (
     <Screen scroll={false} padded={false}>
       <CatalogList
         data={filtered}
-        extraData={`${filter}:${query}:${projects.length}:${surveys.length}`}
+        extraData={`${filter}:${search}:${projects.length}:${surveys.length}`}
         keyExtractor={(client) => client.id}
         refreshing={refreshing}
         onRefresh={refreshWorkspace}
         header={
           <>
-            <TabBrandHeader title="Clientes" subtitle="Gestiona tu cartera y revisa su actividad" />
+            <TabBrandHeader title="Clientes" subtitle="Empresas. Cada una puede tener varios proyectos" />
             <View className="gap-3">
               <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar cliente, contacto o teléfono" />
               <FilterChips
@@ -73,14 +75,14 @@ export default function ClientsScreen() {
         }
         empty={
           <EmptyState
-            title={query ? 'Sin resultados' : filter === 'archived' ? 'No hay clientes archivados' : 'Aún no hay clientes'}
+            title={search ? 'Sin resultados' : filter === 'archived' ? 'No hay clientes archivados' : 'Aún no hay clientes'}
             description={
-              query
+              search
                 ? 'Prueba con otro nombre, contacto o teléfono.'
                 : 'Crea el primer cliente para asociar proyectos.'
             }
             action={
-              query || filter === 'archived' ? undefined : (
+              search || filter === 'archived' ? undefined : (
                 <Button
                   label="Nuevo cliente"
                   className="rounded-full"

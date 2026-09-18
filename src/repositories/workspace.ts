@@ -1,6 +1,16 @@
 import { isUuid } from '@/lib/id';
 import { collectPhotoUris, type RemovedSurveyChildren } from '@/lib/survey';
-import { deleteSurveyRemote, listClients, listProjects, listSurveysForUser, upsertClient, upsertProject, upsertSurveyRemote } from '@/remote';
+import {
+  deleteClient,
+  deleteProject,
+  deleteSurveyRemote,
+  listClients,
+  listProjects,
+  listSurveysForUser,
+  upsertClient,
+  upsertProject,
+  upsertSurveyRemote,
+} from '@/remote';
 import { remoteMessage } from '@/remote/errors';
 import { deleteLocalPhoto } from '@/services/photoStorage';
 import {
@@ -36,7 +46,7 @@ function referencedIds(surveys: Survey[], projects: Project[]) {
   return { projectIds, clientIds };
 }
 
-async function migrateLegacy(userId: string, cache: WorkspaceSnapshot) {
+async function migrateLegacy(userId: string, cache: WorkspaceSnapshot): Promise<WorkspaceSnapshot> {
   if (cache.clients.length || cache.projects.length || cache.surveys.length) return cache;
 
   const legacy = await readLegacyWorkspace();
@@ -49,7 +59,7 @@ async function migrateLegacy(userId: string, cache: WorkspaceSnapshot) {
     (client) => clientIds.has(client.id) || isUuid(client.id),
   );
 
-  const migrated = { clients, projects, surveys };
+  const migrated: WorkspaceSnapshot = { clients, projects, surveys };
   await writeWorkspaceCache(userId, migrated);
   return migrated;
 }
@@ -58,6 +68,72 @@ function upsertItem<T extends { id: string }>(items: T[], item: T) {
   return items.some((current) => current.id === item.id)
     ? items.map((current) => (current.id === item.id ? item : current))
     : [item, ...items];
+}
+
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids)];
+}
+
+function emptyDeletedIds() {
+  return { clients: [] as string[], projects: [] as string[], surveys: [] as string[] };
+}
+
+function markDeleted(
+  snapshot: WorkspaceSnapshot,
+  patch: Partial<NonNullable<WorkspaceSnapshot['deletedIds']>>,
+): WorkspaceSnapshot {
+  const current = snapshot.deletedIds ?? emptyDeletedIds();
+  return {
+    ...snapshot,
+    deletedIds: {
+      clients: uniqueIds([...current.clients, ...(patch.clients ?? [])]),
+      projects: uniqueIds([...current.projects, ...(patch.projects ?? [])]),
+      surveys: uniqueIds([...current.surveys, ...(patch.surveys ?? [])]),
+    },
+  };
+}
+
+function withoutDeleted<T extends { id: string }>(items: T[], ids: string[] | undefined) {
+  if (!ids?.length) return items;
+  const blocked = new Set(ids);
+  return items.filter((item) => !blocked.has(item.id));
+}
+
+async function sweepTombstones(
+  deleted: NonNullable<WorkspaceSnapshot['deletedIds']>,
+  remote: WorkspaceSnapshot,
+): Promise<NonNullable<WorkspaceSnapshot['deletedIds']>> {
+  const keep = emptyDeletedIds();
+
+  for (const id of deleted.surveys) {
+    const survey = remote.surveys.find((item) => item.id === id);
+    if (!survey) continue;
+    try {
+      await deleteSurveyRemote(survey);
+    } catch {
+      keep.surveys.push(id);
+    }
+  }
+
+  for (const id of deleted.projects) {
+    if (!remote.projects.some((item) => item.id === id) || !isUuid(id)) continue;
+    try {
+      await deleteProject(id);
+    } catch {
+      keep.projects.push(id);
+    }
+  }
+
+  for (const id of deleted.clients) {
+    if (!remote.clients.some((item) => item.id === id) || !isUuid(id)) continue;
+    try {
+      await deleteClient(id);
+    } catch {
+      keep.clients.push(id);
+    }
+  }
+
+  return keep;
 }
 
 async function saveSnapshot(userId: string, snapshot: WorkspaceSnapshot) {
@@ -79,19 +155,36 @@ export async function hydrateWorkspace(userId: string): Promise<{
       listSurveysForUser(userId),
     ]);
 
+    const deleted = cached.deletedIds ?? emptyDeletedIds();
+    const kept = await sweepTombstones(deleted, {
+      clients: remoteClients,
+      projects: remoteProjects,
+      surveys: remoteSurveys,
+    });
+
     const snapshot: WorkspaceSnapshot = {
-      clients: [
-        ...byUpdatedAt(cached.clients.filter((item) => isUuid(item.id)), remoteClients),
-        ...cached.clients.filter((item) => !isUuid(item.id)),
-      ],
-      projects: [
-        ...byUpdatedAt(cached.projects.filter((item) => isUuid(item.id)), remoteProjects),
-        ...cached.projects.filter((item) => !isUuid(item.id)),
-      ],
-      surveys: [
-        ...byUpdatedAt(cached.surveys.filter((item) => isUuid(item.id)), remoteSurveys),
-        ...cached.surveys.filter((item) => !isUuid(item.id)),
-      ],
+      clients: withoutDeleted(
+        [
+          ...byUpdatedAt(cached.clients.filter((item) => isUuid(item.id)), remoteClients),
+          ...cached.clients.filter((item) => !isUuid(item.id)),
+        ],
+        deleted.clients,
+      ),
+      projects: withoutDeleted(
+        [
+          ...byUpdatedAt(cached.projects.filter((item) => isUuid(item.id)), remoteProjects),
+          ...cached.projects.filter((item) => !isUuid(item.id)),
+        ],
+        deleted.projects,
+      ),
+      surveys: withoutDeleted(
+        [
+          ...byUpdatedAt(cached.surveys.filter((item) => isUuid(item.id)), remoteSurveys),
+          ...cached.surveys.filter((item) => !isUuid(item.id)),
+        ],
+        deleted.surveys,
+      ),
+      deletedIds: kept,
     };
 
     await saveSnapshot(userId, snapshot);
@@ -224,7 +317,13 @@ export async function removeSurvey(userId: string, surveyId: string): Promise<Pe
   if (survey) {
     await Promise.all(collectPhotoUris(survey).map((uri) => deleteLocalPhoto(uri)));
   }
-  await saveSnapshot(userId, { ...cache, surveys: cache.surveys.filter((item) => item.id !== surveyId) });
+  await saveSnapshot(
+    userId,
+    markDeleted(
+      { ...cache, surveys: cache.surveys.filter((item) => item.id !== surveyId) },
+      { surveys: [surveyId] },
+    ),
+  );
   if (!survey) return { value: undefined, synced: true };
   if (!isUuid(survey.id)) return { value: undefined, synced: false };
   try {
@@ -232,5 +331,71 @@ export async function removeSurvey(userId: string, surveyId: string): Promise<Pe
     return { value: undefined, synced: true };
   } catch (error) {
     return { value: undefined, synced: false, error: remoteMessage(error, 'El levantamiento se eliminó en este dispositivo.') };
+  }
+}
+
+export async function removeProject(userId: string, projectId: string): Promise<PersistResult<void>> {
+  const cache = await readWorkspaceCache(userId);
+  const related = cache.surveys.filter((survey) => survey.projectId === projectId);
+  let synced = true;
+  let error: string | undefined;
+  for (const survey of related) {
+    const result = await removeSurvey(userId, survey.id);
+    if (!result.synced) {
+      synced = false;
+      error = result.error;
+    }
+  }
+  const latest = await readWorkspaceCache(userId);
+  await saveSnapshot(
+    userId,
+    markDeleted(
+      { ...latest, projects: latest.projects.filter((project) => project.id !== projectId) },
+      { projects: [projectId] },
+    ),
+  );
+  if (!isUuid(projectId)) return { value: undefined, synced: false, error };
+  try {
+    await deleteProject(projectId);
+    return { value: undefined, synced, error };
+  } catch (caught) {
+    return {
+      value: undefined,
+      synced: false,
+      error: remoteMessage(caught, 'El proyecto se eliminó en este dispositivo.'),
+    };
+  }
+}
+
+export async function removeClient(userId: string, clientId: string): Promise<PersistResult<void>> {
+  const cache = await readWorkspaceCache(userId);
+  const related = cache.projects.filter((project) => project.clientId === clientId);
+  let synced = true;
+  let error: string | undefined;
+  for (const project of related) {
+    const result = await removeProject(userId, project.id);
+    if (!result.synced) {
+      synced = false;
+      error = result.error;
+    }
+  }
+  const latest = await readWorkspaceCache(userId);
+  await saveSnapshot(
+    userId,
+    markDeleted(
+      { ...latest, clients: latest.clients.filter((client) => client.id !== clientId) },
+      { clients: [clientId] },
+    ),
+  );
+  if (!isUuid(clientId)) return { value: undefined, synced: false, error };
+  try {
+    await deleteClient(clientId);
+    return { value: undefined, synced, error };
+  } catch (caught) {
+    return {
+      value: undefined,
+      synced: false,
+      error: remoteMessage(caught, 'El cliente se eliminó en este dispositivo.'),
+    };
   }
 }

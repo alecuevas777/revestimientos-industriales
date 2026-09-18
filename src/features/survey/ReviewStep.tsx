@@ -18,9 +18,10 @@ type Props = {
   client?: Client;
   technician: string;
   errors: string[];
+  onRemoveSector?: (sectorId: string) => void;
 };
 
-export function ReviewStep({ survey, project, client, technician, errors }: Props) {
+export function ReviewStep({ survey, project, client, technician, errors, onRemoveSector }: Props) {
   const highest = maxSeverity(survey);
   const metrics = surveyMetrics(survey);
   const mainProblems =
@@ -82,6 +83,7 @@ export function ReviewStep({ survey, project, client, technician, errors }: Prop
               index={index}
               serviceType={survey.serviceType}
               onPress={() => push(`/levantamientos/${survey.id}/sector/${item.id}`)}
+              onDelete={onRemoveSector ? () => onRemoveSector(item.id) : undefined}
             />
           ))
         )}

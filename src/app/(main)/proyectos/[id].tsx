@@ -14,14 +14,17 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { projectDeleteMessage } from '@/lib/crud';
 import { completedOf, draftsOf, surveysForProject } from '@/lib/selectors';
-import { push, routeParam } from '@/lib/nav';
+import { push, replace, routeParam } from '@/lib/nav';
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getProject, getClient, surveys } = useApp();
+  const { getProject, getClient, surveys, removeProject } = useApp();
   const project = getProject(routeParam(id) ?? '');
   const client = project ? getClient(project.clientId) : undefined;
+  const { ask, modal } = useConfirmAction();
 
   if (!project) {
     return (
@@ -97,6 +100,24 @@ export default function ProjectDetailScreen() {
           history.map((survey) => <SurveyCard key={survey.id} survey={survey} />)
         )}
       </View>
+
+      <View className="mt-8 pb-4">
+        <Button
+          label="Eliminar proyecto"
+          variant="danger"
+          onPress={() =>
+            ask({
+              title: '¿Eliminar proyecto?',
+              message: projectDeleteMessage(projectSurveys.length),
+              onConfirm: async () => {
+                await removeProject(project.id);
+                replace('/proyectos');
+              },
+            })
+          }
+        />
+      </View>
+      {modal}
     </Screen>
   );
 }

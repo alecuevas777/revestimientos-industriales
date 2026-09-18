@@ -2,6 +2,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
+import { CardActions } from '@/components/ui/CardActions';
 import { ConditionBadge, SeverityBadge } from '@/components/ui/StatusBadge';
 import { Colors } from '@/constants/theme';
 import { usesElements } from '@/constants/options';
@@ -14,15 +15,16 @@ type Props = {
   serviceType?: ServiceType;
   onPress: () => void;
   onDuplicate?: () => void;
+  onDelete?: () => void;
 };
 
-export function SectorCard({ sector, index, serviceType, onPress, onDuplicate }: Props) {
+export function SectorCard({ sector, index, serviceType, onPress, onDuplicate, onDelete }: Props) {
   const name = sector.name.trim() || 'Sector sin nombre';
   const showElements = usesElements(serviceType);
 
   return (
-    <Pressable onPress={onPress}>
-      <Card>
+    <Card>
+      <Pressable onPress={onPress}>
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <Text className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -53,15 +55,13 @@ export function SectorCard({ sector, index, serviceType, onPress, onDuplicate }:
           </View>
           <ChevronRight size={18} color={Colors.muted} />
         </View>
-        <View className="mt-3 flex-row items-center justify-between">
-          <Text className="text-sm font-semibold text-brand">Ver / editar</Text>
-          {onDuplicate ? (
-            <Pressable onPress={onDuplicate} className="min-h-[40px] justify-center px-1">
-              <Text className="text-sm font-semibold text-muted">Duplicar</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </Card>
-    </Pressable>
+      </Pressable>
+      <CardActions
+        editLabel="Editar"
+        onEdit={onPress}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+      />
+    </Card>
   );
 }

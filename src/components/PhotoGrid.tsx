@@ -1,5 +1,5 @@
 import { Camera, CloudOff, ImagePlus, RotateCcw, Trash2, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -64,7 +64,7 @@ function PhotoSyncBadge({ photo }: { photo: PhotoEvidence }) {
   );
 }
 
-export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, editable, onAdd, onUpdate, onRemove }: Props) {
+export const PhotoGrid = memo(function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, editable, onAdd, onUpdate, onRemove }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = photos.find((photo) => photo.id === openId);
 
@@ -184,4 +184,4 @@ export function PhotoGrid({ photos, sectors, categories = DEFAULT_CATEGORIES, ed
       </Modal>
     </View>
   );
-}
+});

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SelectableCard } from '@/components/ui/SelectableCard';
+import { CardActions } from '@/components/ui/CardActions';
 import { TextArea } from '@/components/ui/TextArea';
 import { CONDITION_LABELS, CORROSION_LEVEL_LABELS, SEVERITY_LABELS } from '@/constants/labels';
 import {
@@ -23,7 +24,9 @@ import {
   TRAFFIC_OPTIONS,
   usesElements,
 } from '@/constants/options';
-import { useApp } from '@/context/AppProvider';
+import { useAppActions } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { useEditorTick } from '@/hooks/useEditorTick';
 import { elementTitle } from '@/lib/display';
 import { push, routeParam } from '@/lib/nav';
 import type { ProblemType, Severity, SurfaceCondition, SurveySector } from '@/types';
@@ -33,13 +36,16 @@ const SEVERITIES: Severity[] = ['low', 'medium', 'high', 'critical'];
 
 export default function SectorEditorScreen() {
   const { id, sectorId } = useLocalSearchParams<{ id: string; sectorId: string }>();
-  const { getSurvey, saveSector, removeSector, addElement, addPhoto, updatePhoto, removePhoto } = useApp();
+  const { getSurvey, saveSector, removeSector, addElement, removeElement, addPhoto, updatePhoto, removePhoto } =
+    useAppActions();
+  const tick = useEditorTick();
   const surveyId = routeParam(id) ?? '';
   const currentSectorId = routeParam(sectorId) ?? '';
   const survey = getSurvey(surveyId);
   const sector = survey?.sectors.find((item) => item.id === currentSectorId);
   const [nameError, setNameError] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { ask, modal } = useConfirmAction();
 
   if (!survey || !sector) {
     return (
@@ -55,6 +61,7 @@ export default function SectorEditorScreen() {
 
   function patch(partial: Partial<SurveySector>) {
     void saveSector(surveyId, { id: currentSectorId, ...partial });
+    tick();
   }
 
   return (
@@ -168,6 +175,7 @@ export default function SectorEditorScreen() {
               variant="secondary"
               onPress={async () => {
                 const created = await addElement(surveyId, sector.id);
+                tick();
                 if (created) push(`/levantamientos/${surveyId}/sector/${sector.id}/elemento/${created.id}`);
               }}
             />
@@ -182,19 +190,33 @@ export default function SectorEditorScreen() {
               />
             ) : (
               sector.elements.map((item) => (
-                <SelectableCard
-                  key={item.id}
-                  title={elementTitle(item)}
-                  description={[
-                    CONDITION_LABELS[item.condition],
-                    item.corrosionLevel ? `Corrosión ${CORROSION_LEVEL_LABELS[item.corrosionLevel].toLowerCase()}` : null,
-                    `${item.photos.length} fotos`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  selected={false}
-                  onPress={() => push(`/levantamientos/${surveyId}/sector/${sector.id}/elemento/${item.id}`)}
-                />
+                <View key={item.id}>
+                  <SelectableCard
+                    title={elementTitle(item)}
+                    description={[
+                      CONDITION_LABELS[item.condition],
+                      item.corrosionLevel ? `Corrosión ${CORROSION_LEVEL_LABELS[item.corrosionLevel].toLowerCase()}` : null,
+                      `${item.photos.length} fotos`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    selected={false}
+                    onPress={() => push(`/levantamientos/${surveyId}/sector/${sector.id}/elemento/${item.id}`)}
+                  />
+                  <CardActions
+                    onEdit={() => push(`/levantamientos/${surveyId}/sector/${sector.id}/elemento/${item.id}`)}
+                    onDelete={() =>
+                      ask({
+                        title: '¿Eliminar elemento?',
+                        message: 'Se perderán las observaciones y fotografías de este elemento.',
+                        onConfirm: async () => {
+                          await removeElement(surveyId, item.id);
+                          tick();
+                        },
+                      })
+                    }
+                  />
+                </View>
               ))
             )}
           </View>
@@ -206,9 +228,17 @@ export default function SectorEditorScreen() {
             photos={sector.photos}
             categories={photoCategoriesForService(survey.serviceType)}
             editable
-            onAdd={(uri) => void addPhoto({ surveyId, sectorId: sector.id, uri })}
-            onUpdate={(photoId, photoPatch) => void updatePhoto(surveyId, photoId, photoPatch)}
-            onRemove={(photoId) => void removePhoto(surveyId, photoId)}
+            onAdd={(uri) =>
+              void addPhoto({ surveyId, sectorId: sector.id, uri }).then(() => tick())
+            }
+            onUpdate={(photoId, photoPatch) => {
+              void updatePhoto(surveyId, photoId, photoPatch);
+              tick();
+            }}
+            onRemove={(photoId) => {
+              void removePhoto(surveyId, photoId);
+              tick();
+            }}
           />
         </View>
 
@@ -238,6 +268,7 @@ export default function SectorEditorScreen() {
           router.back();
         }}
       />
+      {modal}
     </Screen>
   );
 }

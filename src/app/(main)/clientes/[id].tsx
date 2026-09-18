@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { InfoRow } from '@/components/InfoRow';
 import { ProjectCard } from '@/components/ProjectCard';
@@ -16,20 +16,23 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/AppProvider';
+import { useConfirmAction } from '@/hooks/useConfirmAction';
+import { clientDeleteMessage } from '@/lib/crud';
 import { completedOf, lastProjectSurveyAt, projectsForClient, surveysForClient } from '@/lib/selectors';
 import { push, replace, routeParam } from '@/lib/nav';
 
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getClient, projects, surveys, archiveClient } = useApp();
+  const { getClient, projects, surveys, archiveClient, restoreClient, removeClient } = useApp();
   const client = getClient(routeParam(id) ?? '');
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const { ask, modal } = useConfirmAction();
 
   if (!client) {
     return (
       <Screen>
         <ScreenHeader title="Cliente" />
-        <EmptyState title="Cliente no encontrado" description="Es posible que haya sido archivado." />
+        <EmptyState title="Cliente no encontrado" description="Es posible que haya sido eliminado." />
       </Screen>
     );
   }
@@ -100,13 +103,27 @@ export default function ClientDetailScreen() {
         )}
       </View>
 
-      {!client.archived ? (
-        <View className="mt-8 pb-4">
+      <View className="mt-8 gap-3 pb-4">
+        {client.archived ? (
+          <Button label="Restaurar cliente" variant="secondary" onPress={() => void restoreClient(client.id)} />
+        ) : (
           <Button label="Archivar cliente" variant="ghost" onPress={() => setArchiveOpen(true)} />
-        </View>
-      ) : (
-        <Text className="mt-8 text-sm text-muted">Este cliente está archivado.</Text>
-      )}
+        )}
+        <Button
+          label="Eliminar cliente"
+          variant="danger"
+          onPress={() =>
+            ask({
+              title: '¿Eliminar cliente?',
+              message: clientDeleteMessage(clientProjects.length, clientSurveys.length),
+              onConfirm: async () => {
+                await removeClient(client.id);
+                replace('/clientes');
+              },
+            })
+          }
+        />
+      </View>
 
       <ConfirmModal
         visible={archiveOpen}
@@ -121,6 +138,7 @@ export default function ClientDetailScreen() {
           replace('/clientes');
         }}
       />
+      {modal}
     </Screen>
   );
 }

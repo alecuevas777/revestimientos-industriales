@@ -19,3 +19,8 @@ export async function upsertProject(project: Project, userId: string) {
   const { error } = await supabase.from('proyectos').upsert(row, { onConflict: 'id' });
   if (error) throw new RemoteError(remoteMessage(error, 'No se pudo guardar el proyecto.'), error);
 }
+
+export async function deleteProject(projectId: string) {
+  const { error } = await supabase.from('proyectos').delete().eq('id', projectId);
+  if (error) throw new RemoteError(remoteMessage(error, 'No se pudo eliminar el proyecto.'), error);
+}

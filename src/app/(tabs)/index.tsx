@@ -8,6 +8,7 @@ import { StatCard } from '@/components/StatCard';
 import { SurveyCard } from '@/components/SurveyCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { MenuButton } from '@/components/ui/MenuButton';
 import { ProfileButton } from '@/components/ui/ProfileButton';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -40,12 +41,15 @@ export default function DashboardScreen() {
   }
 
   return (
-    <Screen bottomSafe={false}>
+    <Screen>
       <View className="mb-6 flex-row items-start justify-between">
-        <View className="flex-1 pr-3">
-          <Text className="text-2xl font-bold text-ink">{greetingForNow()},</Text>
-          <Text className="text-2xl font-bold text-ink">{firstName(session?.name ?? 'Técnico')}</Text>
-          <Text className="mt-1 text-sm text-muted">{APP_NAME_FULL}</Text>
+        <View className="flex-1 flex-row items-start gap-2 pr-3">
+          <MenuButton />
+          <View className="flex-1">
+            <Text className="text-2xl font-bold text-ink">{greetingForNow()},</Text>
+            <Text className="text-2xl font-bold text-ink">{firstName(session?.name ?? 'Técnico')}</Text>
+            <Text className="mt-1 text-sm text-muted">{APP_NAME_FULL}</Text>
+          </View>
         </View>
         <ProfileButton />
       </View>

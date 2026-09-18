@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { ClientCard } from '@/components/ClientCard';
+import { TabBrandHeader } from '@/components/TabBrandHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterChips } from '@/components/ui/FilterChips';
-import { ProfileButton } from '@/components/ui/ProfileButton';
 import { Screen } from '@/components/ui/Screen';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { useApp } from '@/context/AppProvider';
 import { lastClientActivity, surveysForClient } from '@/lib/selectors';
@@ -32,8 +32,8 @@ export default function ClientsScreen() {
   }, [clients, filter, query]);
 
   return (
-    <Screen bottomSafe={false}>
-      <ScreenHeader title="Clientes" back={false} right={<ProfileButton />} />
+    <Screen>
+      <TabBrandHeader title="Clientes" subtitle="Gestiona tu cartera y revisa su actividad" />
       <View className="gap-3">
         <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar cliente, contacto o teléfono" />
         <FilterChips
@@ -44,7 +44,12 @@ export default function ClientsScreen() {
             { value: 'archived', label: 'Archivados' },
           ]}
         />
-        <Button label="+ Nuevo cliente" onPress={() => router.push('/clientes/nuevo')} />
+        <Button
+          label="Nuevo cliente"
+          className="rounded-full"
+          icon={<Plus size={18} color="#fff" />}
+          onPress={() => router.push('/clientes/nuevo')}
+        />
       </View>
       <View className="mt-5 gap-3">
         {filtered.length === 0 ? (
@@ -57,7 +62,12 @@ export default function ClientsScreen() {
             }
             action={
               query || filter === 'archived' ? undefined : (
-                <Button label="+ Nuevo cliente" onPress={() => router.push('/clientes/nuevo')} />
+                <Button
+                  label="Nuevo cliente"
+                  className="rounded-full"
+                  icon={<Plus size={18} color="#fff" />}
+                  onPress={() => router.push('/clientes/nuevo')}
+                />
               )
             }
           />

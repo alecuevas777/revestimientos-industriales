@@ -11,7 +11,7 @@ type Props = {
 
 export function SearchInput({ value, onChangeText, placeholder = 'Buscar' }: Props) {
   return (
-    <View className="min-h-[52px] flex-row items-center gap-3 rounded-2xl border border-line bg-white px-4">
+    <View className="min-h-[48px] flex-row items-center gap-3 rounded-full border border-line bg-white px-4">
       <Search size={20} color={Colors.muted} />
       <TextInput
         value={value}

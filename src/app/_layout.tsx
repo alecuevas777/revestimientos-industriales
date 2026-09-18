@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BrandMark } from '@/components/BrandMark';
 import { AppProvider } from '@/context/AppProvider';
@@ -10,12 +11,14 @@ import '@/global.css';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <StatusBar style="dark" />
-        <RootNavigator />
-      </AppProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AppProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </AppProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -43,8 +46,8 @@ function RootNavigator() {
       </Stack.Protected>
 
       <Stack.Protected guard={!session}>
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
+        <Stack.Screen name="login" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
+        <Stack.Screen name="register" options={{ contentStyle: { backgroundColor: Colors.ink } }} />
         <Stack.Screen name="forgot-password" />
         <Stack.Screen name="reset-password" />
       </Stack.Protected>

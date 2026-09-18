@@ -1,56 +1,56 @@
-import { Tabs } from 'expo-router';
-import { ClipboardList, FolderKanban, LayoutDashboard, Users } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ClipboardList, FolderKanban, LayoutGrid, Users } from 'lucide-react-native';
+import { Drawer } from 'expo-router/drawer';
 
+import { AppDrawerContent } from '@/components/AppDrawer';
 import { Colors } from '@/constants/theme';
 
-export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
-
+export default function AppMenuLayout() {
   return (
-    <Tabs
+    <Drawer
+      drawerContent={(props) => <AppDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.brand,
-        tabBarInactiveTintColor: Colors.muted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarStyle: {
-          backgroundColor: Colors.card,
-          borderTopColor: Colors.line,
-          height: 56 + Math.max(insets.bottom, 8),
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 6,
-        },
+        drawerType: 'front',
+        drawerActiveTintColor: Colors.brand,
+        drawerInactiveTintColor: Colors.ink,
+        drawerActiveBackgroundColor: Colors.brandLight,
+        drawerItemStyle: { borderRadius: 14, marginHorizontal: 8 },
+        drawerLabelStyle: { fontSize: 16, fontWeight: '600' },
+        overlayColor: 'rgba(18, 18, 18, 0.35)',
       }}
     >
-      <Tabs.Screen
+      <Drawer.Screen
         name="index"
         options={{
+          drawerLabel: 'Inicio',
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
+          drawerIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="clientes"
         options={{
+          drawerLabel: 'Clientes',
           title: 'Clientes',
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          drawerIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="proyectos"
         options={{
+          drawerLabel: 'Proyectos',
           title: 'Proyectos',
-          tabBarIcon: ({ color, size }) => <FolderKanban color={color} size={size} />,
+          drawerIcon: ({ color, size }) => <FolderKanban color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="levantamientos"
         options={{
+          drawerLabel: 'Levantamientos',
           title: 'Levantamientos',
-          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
+          drawerIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
         }}
       />
-    </Tabs>
+    </Drawer>
   );
 }

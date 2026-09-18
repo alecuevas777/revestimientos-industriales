@@ -1,13 +1,12 @@
 import { Redirect } from 'expo-router';
+import { ArrowLeft, ArrowRight, Lock, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
-import { AuthBrandHeader } from '@/components/AuthBrandHeader';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Screen } from '@/components/ui/Screen';
-import { APP_EMAIL_PLACEHOLDER } from '@/constants/brand';
+import { AuthButton } from '@/components/auth/AuthButton';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthScreen } from '@/components/auth/AuthScreen';
+import { APP_WEBSITE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthProvider';
 import { href, replace } from '@/lib/nav';
 
@@ -17,6 +16,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +25,10 @@ export default function RegisterScreen() {
   }
 
   async function handleRegister() {
+    if (!accepted) {
+      setError('Debes aceptar los términos y condiciones.');
+      return;
+    }
     if (password !== confirm) {
       setError('Las contraseñas no coinciden.');
       return;
@@ -43,85 +47,118 @@ export default function RegisterScreen() {
   }
 
   return (
-    <Screen>
-      <View className="flex-1 justify-center py-8">
-        <AuthBrandHeader
-          title="Crear cuenta técnica"
-          subtitle="El perfil se crea al registrarte. Quedas como técnico de terreno."
+    <AuthScreen
+      titleLead="Crear"
+      titleAccent="cuenta"
+      subtitle="Registra tu cuenta para gestionar proyectos, clientes y levantamientos desde cualquier lugar."
+    >
+      <View className="gap-3">
+        <AuthField
+          icon={User}
+          value={name}
+          onChangeText={(value) => {
+            setName(value);
+            setError('');
+          }}
+          autoCapitalize="words"
+          autoComplete="name"
+          textContentType="name"
+          placeholder="Nombre completo"
+        />
+        <AuthField
+          icon={Mail}
+          value={email}
+          onChangeText={(value) => {
+            setEmail(value);
+            setError('');
+          }}
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          placeholder="Correo electrónico"
+        />
+        <AuthField
+          icon={Lock}
+          password
+          value={password}
+          onChangeText={(value) => {
+            setPassword(value);
+            setError('');
+          }}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          placeholder="Contraseña"
+        />
+        <AuthField
+          icon={Lock}
+          password
+          value={confirm}
+          onChangeText={(value) => {
+            setConfirm(value);
+            setError('');
+          }}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          placeholder="Confirmar contraseña"
+          error={error}
         />
 
-        <View className="mt-8 gap-4">
-          <Input
-            label="Nombre"
-            value={name}
-            onChangeText={(value) => {
-              setName(value);
+        <View className="flex-row items-center justify-between gap-3 px-1 py-1">
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: accepted }}
+            onPress={() => {
+              setAccepted((value) => !value);
               setError('');
             }}
-            autoCapitalize="words"
-            autoComplete="name"
-            textContentType="name"
-            placeholder="Nombre y apellido"
-          />
-          <Input
-            label="Email"
-            value={email}
-            onChangeText={(value) => {
-              setEmail(value);
-              setError('');
-            }}
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            placeholder={APP_EMAIL_PLACEHOLDER}
-          />
-          <Input
-            label="Contraseña"
-            value={password}
-            onChangeText={(value) => {
-              setPassword(value);
-              setError('');
-            }}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            secureTextEntry
-            placeholder="Mínimo 6 caracteres"
-          />
-          <Input
-            label="Confirmar contraseña"
-            value={confirm}
-            onChangeText={(value) => {
-              setConfirm(value);
-              setError('');
-            }}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            secureTextEntry
-            placeholder="Repite la contraseña"
-            error={error}
-          />
-          <Button label="Crear cuenta" onPress={() => void handleRegister()} loading={loading} />
+            className="min-w-0 flex-1 flex-row items-center gap-2"
+          >
+            <View
+              className={`h-5 w-5 items-center justify-center rounded border ${
+                accepted ? 'border-brand bg-brand' : 'border-white/40'
+              }`}
+            >
+              {accepted ? <Text className="text-[11px] font-bold text-white">✓</Text> : null}
+            </View>
+            <Text className="flex-1 text-sm leading-5 text-white/85">
+              Acepto los{' '}
+              <Text
+                className="font-semibold text-brand"
+                onPress={() => {
+                  void Linking.openURL(APP_WEBSITE);
+                }}
+              >
+                términos y condiciones
+              </Text>
+            </Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => replace('/login')} className="shrink-0">
+            <Text className="text-sm font-semibold text-brand">Ya tengo una cuenta</Text>
+          </Pressable>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => replace('/login')}
-          className="mt-6 items-center py-2"
-        >
-          <Text className="text-sm text-muted">
-            ¿Ya tienes cuenta? <Text className="font-semibold text-brand">Iniciar sesión</Text>
-          </Text>
-        </Pressable>
+        <AuthButton
+          label="Registrarme"
+          loading={loading}
+          onPress={() => void handleRegister()}
+          icon={<ArrowRight size={18} color="#FFFFFF" />}
+        />
 
-        <Card className="mt-4">
-          <Text className="text-sm font-semibold text-ink">Después del registro</Text>
-          <Text className="mt-1 text-sm leading-5 text-muted">
-            Al crear la cuenta volverás a iniciar sesión con tu email y contraseña.
-          </Text>
-        </Card>
+        <View className="my-2 flex-row items-center gap-3">
+          <View className="h-px flex-1 bg-white/20" />
+          <View className="h-2 w-2 rounded-full border border-white/35" />
+          <View className="h-px flex-1 bg-white/20" />
+        </View>
+
+        <AuthButton
+          variant="ghost"
+          label="Volver al inicio de sesión"
+          iconLeft={<ArrowLeft size={18} color="#FFFFFF" />}
+          onPress={() => replace('/login')}
+        />
       </View>
-    </Screen>
+    </AuthScreen>
   );
 }

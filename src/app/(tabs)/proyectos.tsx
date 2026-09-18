@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { ProjectCard } from '@/components/ProjectCard';
+import { TabBrandHeader } from '@/components/TabBrandHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FilterChips } from '@/components/ui/FilterChips';
-import { ProfileButton } from '@/components/ui/ProfileButton';
 import { Screen } from '@/components/ui/Screen';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { useApp } from '@/context/AppProvider';
 import { lastProjectSurveyAt, surveysForProject } from '@/lib/selectors';
@@ -34,8 +34,8 @@ export default function ProjectsScreen() {
   }, [clients, projects, query, status]);
 
   return (
-    <Screen bottomSafe={false}>
-      <ScreenHeader title="Proyectos" back={false} right={<ProfileButton />} />
+    <Screen>
+      <TabBrandHeader title="Proyectos" subtitle="Gestiona tus proyectos y sigue su progreso" />
       <View className="gap-3">
         <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar proyecto, cliente o ubicación" />
         <FilterChips
@@ -48,7 +48,12 @@ export default function ProjectsScreen() {
             { value: 'finished', label: 'Finalizados' },
           ]}
         />
-        <Button label="+ Nuevo proyecto" onPress={() => router.push('/proyectos/nuevo')} />
+        <Button
+          label="Nuevo proyecto"
+          className="rounded-full"
+          icon={<Plus size={18} color="#fff" />}
+          onPress={() => router.push('/proyectos/nuevo')}
+        />
       </View>
       <View className="mt-5 gap-3">
         {filtered.length === 0 ? (
@@ -61,7 +66,12 @@ export default function ProjectsScreen() {
             }
             action={
               query || status !== 'all' ? undefined : (
-                <Button label="+ Nuevo proyecto" onPress={() => router.push('/proyectos/nuevo')} />
+                <Button
+                  label="Nuevo proyecto"
+                  className="rounded-full"
+                  icon={<Plus size={18} color="#fff" />}
+                  onPress={() => router.push('/proyectos/nuevo')}
+                />
               )
             }
           />

@@ -51,7 +51,7 @@ function mapSurveyPhotos(survey: Survey, mapPhoto: (photo: PhotoEvidence) => Pho
 }
 
 export function photoUploadStatus(photo: PhotoEvidence): PhotoUploadStatus {
-  if (photo.storagePath) return 'ready';
+  if (photo.storagePath || photo.uploadStatus === 'ready') return 'ready';
   if (photo.uploadStatus === 'uploading' || photo.uploadStatus === 'error') return photo.uploadStatus;
   if (!photo.uri || photo.uri.startsWith('http')) return 'ready';
   return 'pending';

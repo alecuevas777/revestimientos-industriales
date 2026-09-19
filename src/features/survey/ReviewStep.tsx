@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { ReportGapsBanner } from '@/components/forms/ReportGapsBanner';
+import { InfoRow } from '@/components/InfoRow';
 import { SectorCard } from '@/components/SectorCard';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Card } from '@/components/ui/Card';

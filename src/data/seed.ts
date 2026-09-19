@@ -85,7 +85,7 @@ export function seedClients(): Client[] {
     {
       id: 'cli_pacifico',
       name: 'Industrias del Pacífico',
-      rut: '76.884.210-3',
+      rut: '76.884.210-8',
       contactName: 'María Soto',
       contactRole: 'Jefa de mantención',
       phone: '+56 9 8765 2210',
@@ -100,7 +100,7 @@ export function seedClients(): Client[] {
     {
       id: 'cli_vicast',
       name: 'Vicast Industrial',
-      rut: '76.452.110-K',
+      rut: '76.452.110-2',
       contactName: 'Jorge Palma',
       contactRole: 'Administrador de faena',
       phone: '+56 9 6543 1188',

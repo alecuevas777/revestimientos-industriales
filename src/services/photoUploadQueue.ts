@@ -2,7 +2,7 @@ import { AppState } from 'react-native';
 
 import { collectPhotos, needsPhotoUpload } from '@/lib/survey';
 import { upsertPhotoRemote, uploadPhoto } from '@/remote/photos';
-import type { PhotoEvidence, Survey } from '@/types';
+import type { PhotoEvidence, PhotoUploadStatus, Survey } from '@/types';
 
 type Binder = {
   getUserId: () => string | undefined;
@@ -11,13 +11,37 @@ type Binder = {
   ensureRemote: (surveyId: string) => Promise<void>;
 };
 
+type UploadInfo = { status: PhotoUploadStatus; storagePath?: string };
+
 const pending: { surveyId: string; photoId: string }[] = [];
 const queued = new Set<string>();
 const attempts = new Map<string, number>();
+const statuses = new Map<string, UploadInfo>();
+const listeners = new Set<() => void>();
+let snapshot: ReadonlyMap<string, UploadInfo> = new Map();
 let binder: Binder | null = null;
 let draining = false;
 
 const MAX_ATTEMPTS = 5;
+
+function emitUploads() {
+  snapshot = new Map(statuses);
+  listeners.forEach((listener) => listener());
+}
+
+function setUpload(photoId: string, info: UploadInfo) {
+  statuses.set(photoId, info);
+  emitUploads();
+}
+
+export function subscribePhotoUploads(onStoreChange: () => void) {
+  listeners.add(onStoreChange);
+  return () => listeners.delete(onStoreChange);
+}
+
+export function getPhotoUploadSnapshot() {
+  return snapshot;
+}
 
 export function bindPhotoUploader(next: Binder) {
   binder = next;
@@ -27,11 +51,15 @@ export function resetPhotoUploadQueue() {
   pending.length = 0;
   queued.clear();
   attempts.clear();
+  statuses.clear();
+  emitUploads();
 }
 
 export function cancelPhotoUpload(photoId: string) {
   queued.delete(photoId);
   attempts.delete(photoId);
+  statuses.delete(photoId);
+  emitUploads();
   const index = pending.findIndex((job) => job.photoId === photoId);
   if (index >= 0) pending.splice(index, 1);
 }
@@ -40,6 +68,9 @@ export function enqueuePhotoUpload(surveyId: string, photoId: string) {
   if (queued.has(photoId)) return;
   queued.add(photoId);
   pending.push({ surveyId, photoId });
+  if (statuses.get(photoId)?.status !== 'ready') {
+    setUpload(photoId, { status: 'uploading', storagePath: statuses.get(photoId)?.storagePath });
+  }
   void drain();
 }
 
@@ -97,38 +128,38 @@ async function process(job: { surveyId: string; photoId: string }) {
     retry(job);
     return;
   }
-  if (!initial.uri || initial.uri.startsWith('http')) {
-    if (initial.storagePath) {
-      await upsertPhotoRemote(withDefaults(initial)).catch(() => retry(job));
-    }
-    return;
-  }
 
-  const remoteReady = binder.ensureRemote(job.surveyId).catch(() => undefined);
-  let storagePath = initial.storagePath;
+  let storagePath = initial.storagePath ?? statuses.get(job.photoId)?.storagePath;
 
-  if (!storagePath) {
+  if (!storagePath && initial.uri && !initial.uri.startsWith('http')) {
+    setUpload(job.photoId, { status: 'uploading' });
     binder.onPatch(job.surveyId, job.photoId, { uploadStatus: 'uploading' });
     try {
       const userId = binder.getUserId();
       if (!userId) throw new Error('Sin sesión');
       storagePath = await uploadPhoto(userId, initial);
       if (!storagePath) throw new Error('Sin ruta de storage');
-      binder.onPatch(job.surveyId, job.photoId, { storagePath, uploadStatus: 'ready' });
     } catch {
+      setUpload(job.photoId, { status: 'error' });
       binder.onPatch(job.surveyId, job.photoId, { uploadStatus: 'error' });
       retry(job);
       return;
     }
   }
 
-  await remoteReady;
+  if (storagePath) {
+    setUpload(job.photoId, { status: 'ready', storagePath });
+    binder.onPatch(job.surveyId, job.photoId, { storagePath, uploadStatus: 'ready' });
+  }
+
   const latest = binder.getPhoto(job.surveyId, job.photoId) ?? initial;
   try {
-    await upsertPhotoRemote(withDefaults(latest, { storagePath, uploadStatus: 'ready' }));
+    await binder.ensureRemote(job.surveyId);
+    await upsertPhotoRemote(withDefaults(latest, { storagePath, uploadStatus: storagePath ? 'ready' : latest.uploadStatus }));
     attempts.delete(job.photoId);
   } catch {
-    retry(job);
+    if (storagePath) attempts.delete(job.photoId);
+    else retry(job);
   }
 }
 

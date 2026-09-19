@@ -6,14 +6,22 @@ import type { ClientDraft, ProjectDraft } from '@/types';
 export type ReportClientFields = Pick<ClientDraft, 'rut' | 'contactName' | 'phone' | 'email' | 'address' | 'city'>;
 export type ReportProjectFields = Pick<ProjectDraft, 'address' | 'city' | 'siteContactName' | 'siteContactPhone'>;
 
+export type ReportFieldErrors = {
+  rut?: string;
+  phone?: string;
+  email?: string;
+  siteContactPhone?: string;
+};
+
 type Props = {
   client: ReportClientFields;
   project: ReportProjectFields;
+  errors?: ReportFieldErrors;
   onChangeClient: (patch: Partial<ReportClientFields>) => void;
   onChangeProject: (patch: Partial<ReportProjectFields>) => void;
 };
 
-export function ClientProjectReportFields({ client, project, onChangeClient, onChangeProject }: Props) {
+export function ClientProjectReportFields({ client, project, errors, onChangeClient, onChangeProject }: Props) {
   return (
     <View className="gap-5">
       <View className="gap-4">
@@ -25,7 +33,8 @@ export function ClientProjectReportFields({ client, project, onChangeClient, onC
           label="RUT"
           value={client.rut ?? ''}
           onChangeText={(rut) => onChangeClient({ rut })}
-          placeholder="76.452.110-K"
+          error={errors?.rut}
+          placeholder="76.452.110-2"
         />
         <Input
           label="Persona de contacto"
@@ -38,6 +47,7 @@ export function ClientProjectReportFields({ client, project, onChangeClient, onC
           label="Teléfono"
           value={client.phone ?? ''}
           onChangeText={(phone) => onChangeClient({ phone })}
+          error={errors?.phone}
           keyboardType="phone-pad"
           placeholder="+56 9 0000 0000"
         />
@@ -45,6 +55,7 @@ export function ClientProjectReportFields({ client, project, onChangeClient, onC
           label="Email"
           value={client.email ?? ''}
           onChangeText={(email) => onChangeClient({ email })}
+          error={errors?.email}
           keyboardType="email-address"
           autoCapitalize="none"
           placeholder="contacto@empresa.cl"
@@ -76,6 +87,7 @@ export function ClientProjectReportFields({ client, project, onChangeClient, onC
           label="Teléfono en terreno"
           value={project.siteContactPhone ?? ''}
           onChangeText={(siteContactPhone) => onChangeProject({ siteContactPhone })}
+          error={errors?.siteContactPhone}
           keyboardType="phone-pad"
           placeholder="+56 9 0000 0000"
         />

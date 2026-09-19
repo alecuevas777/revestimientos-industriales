@@ -7,6 +7,7 @@ import {
   type ReportProjectFields,
 } from '@/components/forms/ClientProjectReportFields';
 import { Button } from '@/components/ui/Button';
+import { contactFieldErrors, hasFieldErrors } from '@/lib/validate';
 import type { Client, Project } from '@/types';
 
 type Props = {
@@ -39,21 +40,55 @@ function fromProject(project: Project): ReportProjectFields {
 export function ClientProjectReportEditor({ client, project, submitting, onSave }: Props) {
   const [clientFields, setClientFields] = useState(() => fromClient(client));
   const [projectFields, setProjectFields] = useState(() => fromProject(project));
+  const [errors, setErrors] = useState<ReturnType<typeof contactFieldErrors>>({});
 
   useEffect(() => {
     setClientFields(fromClient(client));
     setProjectFields(fromProject(project));
+    setErrors({});
   }, [client.id, project.id]);
+
+  function handleSave() {
+    const nextErrors = contactFieldErrors({
+      rut: clientFields.rut,
+      phone: clientFields.phone,
+      email: clientFields.email,
+      siteContactPhone: projectFields.siteContactPhone,
+    });
+    setErrors(nextErrors);
+    if (hasFieldErrors(nextErrors)) return;
+    onSave(
+      {
+        ...clientFields,
+        email: clientFields.email?.trim().toLowerCase(),
+      },
+      projectFields,
+    );
+  }
 
   return (
     <View className="gap-4">
       <ClientProjectReportFields
         client={clientFields}
         project={projectFields}
-        onChangeClient={(patch) => setClientFields((current) => ({ ...current, ...patch }))}
-        onChangeProject={(patch) => setProjectFields((current) => ({ ...current, ...patch }))}
+        errors={errors}
+        onChangeClient={(patch) => {
+          setClientFields((current) => ({ ...current, ...patch }));
+          setErrors((current) => ({
+            ...current,
+            rut: patch.rut !== undefined ? undefined : current.rut,
+            phone: patch.phone !== undefined ? undefined : current.phone,
+            email: patch.email !== undefined ? undefined : current.email,
+          }));
+        }}
+        onChangeProject={(patch) => {
+          setProjectFields((current) => ({ ...current, ...patch }));
+          if (patch.siteContactPhone !== undefined) {
+            setErrors((current) => ({ ...current, siteContactPhone: undefined }));
+          }
+        }}
       />
-      <Button label="Guardar datos del informe" loading={submitting} onPress={() => onSave(clientFields, projectFields)} />
+      <Button label="Guardar datos del informe" loading={submitting} onPress={handleSave} />
     </View>
   );
 }

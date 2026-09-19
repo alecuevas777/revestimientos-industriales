@@ -10,6 +10,7 @@ import { AuthScreen } from '@/components/auth/AuthScreen';
 import { useAuth } from '@/context/AuthProvider';
 import { useActionLock } from '@/hooks/useActionLock';
 import { href, replace } from '@/lib/nav';
+import { emailError } from '@/lib/validate';
 
 export default function ForgotPasswordScreen() {
   const { session, requestReset, resetWithCode } = useAuth();
@@ -33,6 +34,12 @@ export default function ForgotPasswordScreen() {
   }
 
   async function handleSendCode() {
+    const invalidEmail = emailError(email, true);
+    if (invalidEmail) {
+      setError(invalidEmail);
+      return;
+    }
+
     await run(async () => {
       setSending(true);
       try {

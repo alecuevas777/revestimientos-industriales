@@ -732,7 +732,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const latest = collectPhotos(surveysRef.current.find((item) => item.id === surveyId) ?? current).find(
           (photo) => photo.id === photoId,
         );
-        if (latest) void upsertPhotoRemote({ ...latest, category: latest.category ?? 'overview' }).catch(() => undefined);
+        if (latest) {
+          if (latest.storagePath) {
+            void upsertPhotoRemote({ ...latest, category: latest.category ?? 'overview' }).catch(() => undefined);
+          } else {
+            enqueuePhotoUpload(surveyId, photoId);
+          }
+        }
       },
       removePhoto: async (surveyId, photoId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);

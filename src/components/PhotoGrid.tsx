@@ -1,5 +1,5 @@
 import { Camera, CloudOff, ImagePlus, RotateCcw, Trash2, X } from 'lucide-react-native';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -22,6 +22,7 @@ import { Colors } from '@/constants/theme';
 import { useAppActions } from '@/context/AppProvider';
 import { pickFromLibrary, takePhoto } from '@/lib/pickPhoto';
 import { photoUploadStatus } from '@/lib/survey';
+import { getPhotoUploadSnapshot, subscribePhotoUploads } from '@/services/photoUploadQueue';
 import type { PhotoCategory, PhotoEvidence, SurveySector } from '@/types';
 
 type CategoryOption = { value: PhotoCategory; label: string };
@@ -40,6 +41,16 @@ const DEFAULT_CATEGORIES = Object.entries(PHOTO_CATEGORY_LABELS).map(([value, la
   value: value as PhotoCategory,
   label,
 }));
+
+function withLiveUpload(photo: PhotoEvidence, uploads: ReadonlyMap<string, { status: PhotoEvidence['uploadStatus']; storagePath?: string }>) {
+  const live = uploads.get(photo.id);
+  if (!live) return photo;
+  return {
+    ...photo,
+    uploadStatus: live.status,
+    storagePath: live.storagePath ?? photo.storagePath,
+  };
+}
 
 function PhotoSyncBadge({ photo }: { photo: PhotoEvidence }) {
   const { retryPhotoUpload } = useAppActions();
@@ -224,9 +235,16 @@ export const PhotoGrid = memo(function PhotoGrid({
   onUpdate,
   onRemove,
 }: Props) {
+  const uploads = useSyncExternalStore(subscribePhotoUploads, getPhotoUploadSnapshot);
   const [openId, setOpenId] = useState<string | null>(null);
   const [added, setAdded] = useState<PhotoEvidence | null>(null);
-  const selected = photos.find((photo) => photo.id === openId) ?? (added?.id === openId ? added : undefined);
+  const visiblePhotos = useMemo(
+    () => photos.map((photo) => withLiveUpload(photo, uploads)),
+    [photos, uploads],
+  );
+  const selected =
+    visiblePhotos.find((photo) => photo.id === openId) ??
+    (added?.id === openId ? withLiveUpload(added, uploads) : undefined);
 
   async function addAndOpen(pick: () => Promise<string | null>) {
     if (!onAdd) return;
@@ -257,14 +275,14 @@ export const PhotoGrid = memo(function PhotoGrid({
         </View>
       ) : null}
 
-      {photos.length === 0 ? (
+      {visiblePhotos.length === 0 ? (
         <View className="items-center rounded-2xl border border-dashed border-line bg-white py-8">
           <Camera size={24} color={Colors.muted} />
           <Text className="mt-2 text-sm text-muted">Aún no hay fotografías</Text>
         </View>
       ) : (
         <View className="flex-row flex-wrap justify-between gap-y-3">
-          {photos.map((photo, index) => (
+          {visiblePhotos.map((photo, index) => (
             <Pressable
               key={photo.id}
               onPress={() => setOpenId(photo.id)}

@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/TextArea';
+import { emailError, phoneError, rutError } from '@/lib/validate';
 import type { Client, ClientDraft } from '@/types';
 
 type Props = {
@@ -24,18 +25,24 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
   const [city, setCity] = useState(initial?.city ?? '');
   const [observations, setObservations] = useState(initial?.observations ?? '');
   const [projectName, setProjectName] = useState('');
-  const [error, setError] = useState('');
-  const [projectError, setProjectError] = useState('');
+  const [errors, setErrors] = useState<{
+    name?: string;
+    rut?: string;
+    phone?: string;
+    email?: string;
+    project?: string;
+  }>({});
 
   function handleSubmit() {
-    if (!name.trim()) {
-      setError('Ingresa el nombre del cliente.');
-      return;
-    }
-    if (includeFirstProject && !projectName.trim()) {
-      setProjectError('Ingresa el nombre del proyecto. Es distinto al del cliente.');
-      return;
-    }
+    const nextErrors = {
+      name: name.trim() ? undefined : 'Ingresa el nombre del cliente.',
+      rut: rutError(rut),
+      phone: phoneError(phone),
+      email: emailError(email),
+      project: includeFirstProject && !projectName.trim() ? 'Ingresa el nombre del proyecto. Es distinto al del cliente.' : undefined,
+    };
+    setErrors(nextErrors);
+    if (nextErrors.name || nextErrors.rut || nextErrors.phone || nextErrors.email || nextErrors.project) return;
 
     onSubmit(
       {
@@ -44,7 +51,7 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
         contactName: contactName.trim() || undefined,
         contactRole: contactRole.trim() || undefined,
         phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
+        email: email.trim().toLowerCase() || undefined,
         address: address.trim() || undefined,
         city: city.trim() || undefined,
         observations: observations.trim() || undefined,
@@ -64,12 +71,21 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
         value={name}
         onChangeText={(value) => {
           setName(value);
-          setError('');
+          setErrors((current) => ({ ...current, name: undefined }));
         }}
-        error={error}
+        error={errors.name}
         placeholder="Industrias del Pacífico"
       />
-      <Input label="RUT (opcional)" value={rut} onChangeText={setRut} placeholder="76.452.110-K" />
+      <Input
+        label="RUT (opcional)"
+        value={rut}
+        onChangeText={(value) => {
+          setRut(value);
+          setErrors((current) => ({ ...current, rut: undefined }));
+        }}
+        error={errors.rut}
+        placeholder="76.452.110-2"
+      />
       <Input
         label="Persona de contacto"
         hint="Nombre de la persona, no de la empresa."
@@ -78,8 +94,29 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
         placeholder="María Soto"
       />
       <Input label="Cargo del contacto (opcional)" value={contactRole} onChangeText={setContactRole} placeholder="Jefa de mantención" />
-      <Input label="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+56 9 0000 0000" />
-      <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="contacto@empresa.cl" />
+      <Input
+        label="Teléfono"
+        value={phone}
+        onChangeText={(value) => {
+          setPhone(value);
+          setErrors((current) => ({ ...current, phone: undefined }));
+        }}
+        error={errors.phone}
+        keyboardType="phone-pad"
+        placeholder="+56 9 0000 0000"
+      />
+      <Input
+        label="Email"
+        value={email}
+        onChangeText={(value) => {
+          setEmail(value);
+          setErrors((current) => ({ ...current, email: undefined }));
+        }}
+        error={errors.email}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        placeholder="contacto@empresa.cl"
+      />
       <Input label="Dirección" value={address} onChangeText={setAddress} placeholder="Camino a Coronel 2450" />
       <Input label="Comuna / ciudad" value={city} onChangeText={setCity} placeholder="Coronel" />
       <TextArea
@@ -101,9 +138,9 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
             value={projectName}
             onChangeText={(value) => {
               setProjectName(value);
-              setProjectError('');
+              setErrors((current) => ({ ...current, project: undefined }));
             }}
-            error={projectError}
+            error={errors.project}
             placeholder="Planta Coronel"
           />
         </View>

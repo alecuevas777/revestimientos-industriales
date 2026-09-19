@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { SelectableCard } from '@/components/ui/SelectableCard';
 import { TextArea } from '@/components/ui/TextArea';
 import { PROJECT_STATUS_LABELS } from '@/constants/labels';
+import { phoneError } from '@/lib/validate';
 import type { Client, Project, ProjectDraft, ProjectStatus } from '@/types';
 
 const STATUSES: ProjectStatus[] = ['active', 'pending', 'finished'];
@@ -30,15 +31,16 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
   const [status, setStatus] = useState<ProjectStatus>(initial?.status ?? 'active');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [observations, setObservations] = useState(initial?.observations ?? '');
-  const [errors, setErrors] = useState<{ name?: string; clientId?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; clientId?: string; siteContactPhone?: string }>({});
 
   function handleSubmit() {
     const nextErrors = {
       name: name.trim() ? undefined : 'Ingresa el nombre del proyecto.',
       clientId: clientId ? undefined : 'Selecciona un cliente.',
+      siteContactPhone: phoneError(siteContactPhone),
     };
     setErrors(nextErrors);
-    if (nextErrors.name || nextErrors.clientId) return;
+    if (nextErrors.name || nextErrors.clientId || nextErrors.siteContactPhone) return;
 
     const cityValue = city.trim();
     onSubmit({
@@ -103,7 +105,11 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
       <Input
         label="Teléfono contacto"
         value={siteContactPhone}
-        onChangeText={setSiteContactPhone}
+        onChangeText={(value) => {
+          setSiteContactPhone(value);
+          setErrors((current) => ({ ...current, siteContactPhone: undefined }));
+        }}
+        error={errors.siteContactPhone}
         keyboardType="phone-pad"
         placeholder="+56 9 0000 0000"
       />

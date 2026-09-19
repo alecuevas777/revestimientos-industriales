@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import type { User as AuthUser } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
+import { emailError } from '@/lib/validate';
 import { clearSession, saveSession } from '@/storage/sessionStorage';
 import { WORKER_ROLE } from '@/constants/labels';
 import type { User } from '@/types';
@@ -94,7 +95,9 @@ export async function persistProfile(authUser: AuthUser): Promise<string | User>
 
 export async function signInWithPassword(email: string, password: string): Promise<string | User> {
   const trimmed = email.trim().toLowerCase();
-  if (!trimmed || !password) return 'Ingresa email y contraseña.';
+  const invalidEmail = emailError(trimmed, true);
+  if (invalidEmail) return invalidEmail;
+  if (!password) return 'Ingresa email y contraseña.';
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: trimmed,
@@ -117,7 +120,8 @@ export async function signUpWithPassword(input: {
   const password = input.password;
 
   if (!name) return { ok: false, message: 'Ingresa tu nombre.' };
-  if (!email.includes('@')) return { ok: false, message: 'Ingresa un email válido.' };
+  const invalidEmail = emailError(email, true);
+  if (invalidEmail) return { ok: false, message: invalidEmail };
   if (password.length < 6) return { ok: false, message: 'La contraseña debe tener al menos 6 caracteres.' };
 
   const { data, error } = await supabase.auth.signUp({
@@ -217,7 +221,8 @@ export async function consumeAuthCallback(url: string): Promise<AuthCallbackKind
 
 export async function requestPasswordReset(email: string): Promise<string | null> {
   const trimmed = email.trim().toLowerCase();
-  if (!trimmed.includes('@')) return 'Ingresa un email válido.';
+  const invalidEmail = emailError(trimmed, true);
+  if (invalidEmail) return invalidEmail;
 
   const { error } = await supabase.auth.resetPasswordForEmail(trimmed);
   if (error) return mapAuthError(error.message);
@@ -233,7 +238,8 @@ export async function resetPasswordWithCode(input: {
   const token = input.token.replace(/\s/g, '');
   const password = input.password;
 
-  if (!email.includes('@')) return 'Ingresa un email válido.';
+  const invalidEmail = emailError(email, true);
+  if (invalidEmail) return invalidEmail;
   if (token.length < 6) return 'Ingresa el código de 6 dígitos del correo.';
   if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
 

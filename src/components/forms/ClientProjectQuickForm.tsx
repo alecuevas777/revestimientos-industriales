@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { ClientProjectReportFields, type ReportClientFields, type ReportProjectFields } from '@/components/forms/ClientProjectReportFields';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { contactFieldErrors, hasFieldErrors } from '@/lib/validate';
 import type { ClientProjectSetup } from '@/types';
 
 type Props = {
@@ -16,15 +17,28 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
   const [projectName, setProjectName] = useState('');
   const [client, setClient] = useState<ReportClientFields>({});
   const [project, setProject] = useState<ReportProjectFields>({});
-  const [errors, setErrors] = useState<{ client?: string; project?: string }>({});
+  const [errors, setErrors] = useState<{
+    client?: string;
+    project?: string;
+    rut?: string;
+    phone?: string;
+    email?: string;
+    siteContactPhone?: string;
+  }>({});
 
   function handleSubmit() {
     const nextErrors = {
       client: clientName.trim() ? undefined : 'Ingresa el nombre del cliente.',
       project: projectName.trim() ? undefined : 'Ingresa el nombre del proyecto.',
+      ...contactFieldErrors({
+        rut: client.rut,
+        phone: client.phone,
+        email: client.email,
+        siteContactPhone: project.siteContactPhone,
+      }),
     };
     setErrors(nextErrors);
-    if (nextErrors.client || nextErrors.project) return;
+    if (hasFieldErrors(nextErrors)) return;
 
     const city = project.city?.trim() || client.city?.trim() || undefined;
     const address = project.address?.trim() || client.address?.trim() || undefined;
@@ -34,7 +48,7 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
         rut: client.rut?.trim() || undefined,
         contactName: client.contactName?.trim() || undefined,
         phone: client.phone?.trim() || undefined,
-        email: client.email?.trim() || undefined,
+        email: client.email?.trim().toLowerCase() || undefined,
         address: client.address?.trim() || address,
         city: client.city?.trim() || city,
       },
@@ -88,8 +102,22 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
       <ClientProjectReportFields
         client={client}
         project={project}
-        onChangeClient={(patch) => setClient((current) => ({ ...current, ...patch }))}
-        onChangeProject={(patch) => setProject((current) => ({ ...current, ...patch }))}
+        errors={errors}
+        onChangeClient={(patch) => {
+          setClient((current) => ({ ...current, ...patch }));
+          setErrors((current) => ({
+            ...current,
+            rut: patch.rut !== undefined ? undefined : current.rut,
+            phone: patch.phone !== undefined ? undefined : current.phone,
+            email: patch.email !== undefined ? undefined : current.email,
+          }));
+        }}
+        onChangeProject={(patch) => {
+          setProject((current) => ({ ...current, ...patch }));
+          if (patch.siteContactPhone !== undefined) {
+            setErrors((current) => ({ ...current, siteContactPhone: undefined }));
+          }
+        }}
       />
 
       <Button label="Crear y continuar" onPress={handleSubmit} loading={submitting} />

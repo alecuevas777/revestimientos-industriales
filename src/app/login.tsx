@@ -11,6 +11,7 @@ import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { useAuth } from '@/context/AuthProvider';
 import { useActionLock } from '@/hooks/useActionLock';
 import { href, push } from '@/lib/nav';
+import { emailError } from '@/lib/validate';
 
 export default function LoginScreen() {
   const { session, login } = useAuth();
@@ -38,6 +39,16 @@ export default function LoginScreen() {
   }
 
   async function handleLogin() {
+    const invalidEmail = emailError(email, true);
+    if (invalidEmail) {
+      setError(invalidEmail);
+      return;
+    }
+    if (!password) {
+      setError('Ingresa email y contraseña.');
+      return;
+    }
+
     await run(async () => {
       setLoading(true);
       try {
@@ -88,6 +99,7 @@ export default function LoginScreen() {
           keyboardType="email-address"
           textContentType="emailAddress"
           placeholder="Correo electrónico"
+          error={error.toLowerCase().includes('correo') || error.toLowerCase().includes('email') ? error : undefined}
         />
         <AuthField
           icon={Lock}
@@ -100,7 +112,7 @@ export default function LoginScreen() {
           autoComplete="password"
           textContentType="password"
           placeholder="Contraseña"
-          error={error}
+          error={error && !error.toLowerCase().includes('correo') && !error.toLowerCase().includes('email') ? error : undefined}
           onSubmitEditing={() => {
             void handleLogin();
           }}

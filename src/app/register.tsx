@@ -10,6 +10,7 @@ import { APP_WEBSITE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthProvider';
 import { useActionLock } from '@/hooks/useActionLock';
 import { href, replace } from '@/lib/nav';
+import { emailError } from '@/lib/validate';
 
 export default function RegisterScreen() {
   const { session, register } = useAuth();
@@ -29,6 +30,11 @@ export default function RegisterScreen() {
   async function handleRegister() {
     if (!accepted) {
       setError('Debes aceptar los términos y condiciones.');
+      return;
+    }
+    const invalidEmail = emailError(email, true);
+    if (invalidEmail) {
+      setError(invalidEmail);
       return;
     }
     if (password.length < 6) {
@@ -89,6 +95,7 @@ export default function RegisterScreen() {
           keyboardType="email-address"
           textContentType="emailAddress"
           placeholder="Correo electrónico"
+          error={error.toLowerCase().includes('correo') || error.toLowerCase().includes('email') ? error : undefined}
         />
         <AuthField
           icon={Lock}
@@ -114,7 +121,7 @@ export default function RegisterScreen() {
           autoComplete="new-password"
           textContentType="newPassword"
           placeholder="Confirmar contraseña"
-          error={error}
+          error={error && !error.toLowerCase().includes('correo') && !error.toLowerCase().includes('email') ? error : undefined}
         />
 
         <View className="flex-row items-center justify-between gap-3 px-1 py-1">

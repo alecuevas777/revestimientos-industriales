@@ -5,16 +5,20 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SurveyReportButton } from '@/components/SurveyReportButton';
 import { useApp } from '@/context/AppProvider';
+import { useAuth } from '@/context/AuthProvider';
 import { replace, routeParam } from '@/lib/nav';
 import { photoCount, problemCount } from '@/lib/survey';
 import { Text, View } from 'react-native';
 
 export default function SurveySuccessScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSurvey, getProject } = useApp();
+  const { getSurvey, getProject, getClient } = useApp();
+  const { session } = useAuth();
   const survey = getSurvey(routeParam(id) ?? '');
   const project = survey ? getProject(survey.projectId) : undefined;
+  const client = project ? getClient(project.clientId) : undefined;
 
   if (!survey) {
     return (
@@ -45,7 +49,13 @@ export default function SurveySuccessScreen() {
         </View>
       </Card>
       <View className="mt-6 gap-3">
-        <Button label="Ver levantamiento" onPress={() => replace(`/levantamientos/${survey.id}`)} />
+        <SurveyReportButton
+          survey={survey}
+          client={client}
+          project={project}
+          technician={session?.name ?? 'Técnico'}
+        />
+        <Button label="Ver levantamiento" variant="secondary" onPress={() => replace(`/levantamientos/${survey.id}`)} />
         <Button
           label="Volver al proyecto"
           variant="ghost"

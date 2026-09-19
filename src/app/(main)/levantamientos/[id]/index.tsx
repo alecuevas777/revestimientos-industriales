@@ -12,6 +12,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SurveyReportButton } from '@/components/SurveyReportButton';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ConditionBadge, SeverityBadge, SurveyStatusBadge } from '@/components/ui/StatusBadge';
 import {
@@ -351,7 +352,15 @@ export default function SurveyDetailScreen() {
         </View>
       ) : null}
 
-      <View className="mt-8 pb-4">
+      <View className="mt-8 gap-3 pb-4">
+        <SurveyReportButton
+          survey={survey}
+          client={client}
+          project={project}
+          technician={session?.name ?? 'Técnico'}
+          variant="secondary"
+          label="Compartir informe PDF"
+        />
         <Button label="Eliminar levantamiento" variant="ghost" onPress={() => setDeleteOpen(true)} />
       </View>
 

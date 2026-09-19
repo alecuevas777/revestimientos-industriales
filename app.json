@@ -12,7 +12,9 @@
       "infoPlist": {
         "CFBundleDevelopmentRegion": "es",
         "CFBundleAllowMixedLocalizations": true,
-        "CFBundleLocalizations": ["es"]
+        "CFBundleLocalizations": [
+          "es"
+        ]
       }
     },
     "android": {
@@ -49,7 +51,9 @@
           "cameraPermission": "VICAST necesita la cámara para fotografiar las superficies en terreno.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-asset"
     ],
     "locales": {
       "es": "./locales/es.json"

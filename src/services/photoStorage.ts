@@ -72,7 +72,7 @@ export async function savePhotoLocally(sourceUri: string) {
     }
 
     const destination = new File(directory, `${createId('pho')}.jpg`);
-    new File(compressed).copy(destination);
+    await new File(compressed).copy(destination);
     return destination.uri;
   } catch {
     return compressed;

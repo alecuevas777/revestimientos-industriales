@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>VICAST · Propuesta de informe de levantamiento</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 18mm;
+      @bottom-left {
+        content: "VICAST · Informe de levantamiento";
+        font-size: 8pt;
+        color: #6B7280;
+        font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      }
+      @bottom-center {
+        content: "Industrias del Pacífico  ·  Planta Coronel  ·  LEV-2026-0018";
+        font-size: 8pt;
+        color: #6B7280;
+        font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page);
+        font-size: 8pt;
+        color: #6B7280;
+        font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      color: #121212;
+      background: #fff;
+      font-size: 9.5pt;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .proposal-bar {
+      background: #121212;
+      color: #fff;
+      font-size: 7.5pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      margin: -2mm -2mm 10px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    .proposal-bar span { color: #F96706; }
+    header.top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #F96706;
+    }
+    .logo { height: 42px; width: auto; }
+    .doc-meta { text-align: right; }
+    .doc-kicker {
+      font-size: 8pt;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #F96706;
+      font-weight: 700;
+      margin: 0 0 2px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 18pt;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      line-height: 1.15;
+    }
+    .doc-code {
+      margin-top: 4px;
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #121212;
+    }
+    .muted { color: #6B7280; }
+    .path {
+      margin: 12px 0 14px;
+      display: flex;
+      align-items: stretch;
+      border: 1px solid #E5E5E5;
+      overflow: hidden;
+    }
+    .path-step {
+      flex: 1;
+      padding: 8px 12px;
+      min-width: 0;
+    }
+    .path-step + .path-step { border-left: 1px solid #E5E5E5; }
+    .path-step.accent { background: #FFE8D6; }
+    .path-label {
+      font-size: 7.5pt;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6B7280;
+      font-weight: 700;
+      margin: 0 0 2px;
+    }
+    .path-value { font-size: 10.5pt; font-weight: 700; }
+    .path-sub { font-size: 8pt; color: #6B7280; margin-top: 1px; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .kpi {
+      border: 1px solid #E5E5E5;
+      padding: 8px 10px;
+    }
+    .kpi b { display: block; font-size: 14pt; font-weight: 800; line-height: 1.1; }
+    .kpi span { font-size: 7.5pt; color: #6B7280; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    h2 {
+      font-size: 10pt;
+      margin: 16px 0 8px;
+      padding: 5px 9px;
+      background: #121212;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      page-break-after: avoid;
+    }
+    h2 .n {
+      color: #F96706;
+      margin-right: 6px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 18px;
+    }
+    .kv { display: grid; grid-template-columns: 118px 1fr; gap: 2px 10px; }
+    .kv dt { color: #6B7280; font-size: 8.5pt; }
+    .kv dd { margin: 0; font-weight: 600; }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      font-size: 8pt;
+      font-weight: 700;
+      padding: 2px 7px;
+      border: 1px solid #E5E5E5;
+      background: #F5F5F5;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 8pt;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+    }
+    .b-regular { background: #FEF3C7; color: #92400E; }
+    .b-bad { background: #FEE2E2; color: #991B1B; }
+    .b-good { background: #D1FAE5; color: #065F46; }
+    .b-high { background: #FFE8D6; color: #9A3412; }
+    .b-med { background: #FEF3C7; color: #92400E; }
+    .b-low { background: #E5E7EB; color: #374151; }
+    .b-ok { background: #D1FAE5; color: #065F46; }
+    p { margin: 0 0 8px; }
+    .note {
+      background: #F5F5F5;
+      border-left: 3px solid #F96706;
+      padding: 8px 10px;
+      margin: 8px 0 0;
+    }
+    .sector {
+      border: 1px solid #E5E5E5;
+      margin-bottom: 10px;
+      page-break-inside: avoid;
+    }
+    .sector-h {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: #F5F5F5;
+      border-bottom: 1px solid #E5E5E5;
+    }
+    .sector-h h3 { margin: 0; font-size: 11pt; }
+    .sector-id { font-size: 8pt; color: #6B7280; font-weight: 700; letter-spacing: 0.08em; }
+    .sector-b { padding: 10px; }
+    .ref {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #9A3412;
+    }
+    .evidence-lead {
+      margin: 0 0 12px;
+      color: #6B7280;
+    }
+    .evidence-group {
+      margin: 0 0 16px;
+      page-break-inside: avoid;
+    }
+    .evidence-h {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      border-bottom: 2px solid #121212;
+    }
+    .evidence-h h3 { margin: 0; font-size: 11pt; }
+    .evidence-h .range { font-size: 8.5pt; color: #6B7280; font-weight: 700; letter-spacing: 0.04em; }
+    .shots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .shot { border: 1px solid #E5E5E5; }
+    .shot-frame {
+      height: 128px;
+      background:
+        repeating-linear-gradient(-45deg, #FAFAFA, #FAFAFA 8px, #F3F4F6 8px, #F3F4F6 16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9CA3AF;
+      font-size: 9pt;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .shot-meta { padding: 7px 9px; }
+    .shot-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .shot-code { font-weight: 800; font-size: 9.5pt; }
+    .shot-cat {
+      font-size: 7.5pt;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: #FFE8D6;
+      color: #9A3412;
+      padding: 1px 6px;
+    }
+    .shot-cap { font-size: 8.5pt; color: #6B7280; }
+    .concl {
+      border: 1px solid #F96706;
+      padding: 12px;
+      page-break-inside: avoid;
+    }
+    .concl h3 { margin: 0 0 6px; font-size: 11pt; }
+    .foot-note {
+      margin-top: 14px;
+      font-size: 8pt;
+      color: #6B7280;
+      border-top: 1px solid #E5E5E5;
+      padding-top: 8px;
+    }
+    .page-break { page-break-before: always; }
+    table.plain { width: 100%; border-collapse: collapse; }
+    table.plain th, table.plain td {
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid #E5E5E5;
+      vertical-align: top;
+      font-size: 9pt;
+    }
+    table.plain th {
+      width: 28%;
+      color: #6B7280;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="proposal-bar">
+    <div>Propuesta de formato · no es un informe real</div>
+    <div>Exportación PDF <span>VICAST Levantamientos</span></div>
+  </div>
+
+  <header class="top">
+    <img class="logo" src="../assets/images/vicast-logo-negro.png" alt="VICAST" />
+    <div class="doc-meta">
+      <p class="doc-kicker">Informe de levantamiento</p>
+      <h1>Sistemas epóxicos</h1>
+      <div class="doc-code">LEV-2026-0018</div>
+      <div class="muted">19 de septiembre de 2026 · Finalizado</div>
+    </div>
+  </header>
+
+  <div class="path">
+    <div class="path-step">
+      <p class="path-label">Cliente</p>
+      <div class="path-value">Industrias del Pacífico</div>
+      <div class="path-sub">RUT 76.884.210-8 · Coronel</div>
+    </div>
+    <div class="path-step">
+      <p class="path-label">Proyecto / recinto</p>
+      <div class="path-value">Planta Coronel</div>
+      <div class="path-sub">VIC-COR-01 · Camino a Coronel 2450</div>
+    </div>
+    <div class="path-step accent">
+      <p class="path-label">Levantamiento</p>
+      <div class="path-value">LEV-2026-0018</div>
+      <div class="path-sub">Visita de evaluación · Por sectores</div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span>Superficie total</span><b>1.250 m²</b></div>
+    <div class="kpi"><span>Sectores</span><b>3</b></div>
+    <div class="kpi"><span>Fotografías</span><b>10</b></div>
+    <div class="kpi"><span>Condición general</span><b style="font-size:11pt">Regular</b></div>
+    <div class="kpi"><span>Mayor criticidad</span><b style="font-size:11pt">Alta</b></div>
+  </div>
+
+  <h2><span class="n">01</span>Identificación</h2>
+  <div class="grid-2">
+    <dl class="kv">
+      <dt>Empresa</dt><dd>Industrias del Pacífico</dd>
+      <dt>RUT</dt><dd>76.884.210-8</dd>
+      <dt>Contacto empresa</dt><dd>María Soto · Jefa de mantención</dd>
+      <dt>Teléfono</dt><dd>+56 9 8765 2210</dd>
+      <dt>Correo</dt><dd>msoto@pacifico.cl</dd>
+    </dl>
+    <dl class="kv">
+      <dt>Proyecto</dt><dd>Planta Coronel</dd>
+      <dt>Código interno</dt><dd>VIC-COR-01</dd>
+      <dt>Dirección</dt><dd>Camino a Coronel 2450, Coronel</dd>
+      <dt>Contacto en terreno</dt><dd>Luis Rivas</dd>
+      <dt>Teléfono terreno</dt><dd>+56 9 4412 7780</dd>
+    </dl>
+  </div>
+
+  <h2><span class="n">02</span>Visita</h2>
+  <div class="grid-2">
+    <dl class="kv">
+      <dt>Fecha</dt><dd>19 de septiembre de 2026</dd>
+      <dt>Hora de inicio</dt><dd>14:10</dd>
+      <dt>Técnico</dt><dd>Carlos Núñez</dd>
+      <dt>Servicio</dt><dd>Sistemas epóxicos</dd>
+    </dl>
+    <dl class="kv">
+      <dt>Alcance</dt><dd>Por sectores</dd>
+      <dt>Planta operativa</dt><dd>Sí</dd>
+      <dt>Restricción de horario</dt><dd>Sí · producción después de las 18:00</dd>
+      <dt>Motivo</dt><dd>Evaluación de piso industrial para sistema epóxico</dd>
+    </dl>
+  </div>
+
+  <h2><span class="n">03</span>Condiciones del recinto</h2>
+  <table class="plain">
+    <tr><th>Superficie</th><td>Piso · Hormigón</td></tr>
+    <tr><th>Revestimiento existente</th><td>Sí · Epóxico · Desgastado</td></tr>
+    <tr><th>Uso</th><td>Producción, grúa horquilla</td></tr>
+    <tr><th>Exposición</th><td>Aceites, abrasión, impactos</td></tr>
+    <tr><th>Problemas generales</th><td>
+      <div class="chips">
+        <span class="chip">Fisuras</span>
+        <span class="chip">Desgaste</span>
+        <span class="chip">Aceite / grasa</span>
+      </div>
+    </td></tr>
+  </table>
+  <div class="note">El deterioro se concentra en producción y circulación de grúa horquilla.</div>
+
+  <div class="page-break"></div>
+  <div class="proposal-bar">
+    <div>Propuesta de formato · no es un informe real</div>
+    <div>LEV-2026-0018 · Sectores</div>
+  </div>
+
+  <h2><span class="n">04</span>Hallazgos por sector</h2>
+  <p class="muted">Cada sector es una zona del recinto. La superficie total de la visita es 1.250 m²; aquí se desglosa por área.</p>
+
+  <article class="sector">
+    <div class="sector-h">
+      <div>
+        <div class="sector-id">SECTOR 01</div>
+        <h3>Área producción</h3>
+      </div>
+      <div>
+        <span class="badge b-regular">Regular</span>
+        <span class="badge b-high">Criticidad alta</span>
+      </div>
+    </div>
+    <div class="sector-b">
+      <div class="grid-2">
+        <dl class="kv">
+          <dt>Superficie</dt><dd>500 m²</dd>
+          <dt>Uso</dt><dd>Producción, grúa horquilla</dd>
+          <dt>Tráfico</dt><dd>Alto</dd>
+        </dl>
+        <dl class="kv">
+          <dt>Exposición</dt><dd>Aceites, abrasión, impactos</dd>
+          <dt>Problemas</dt><dd>Fisuras, desgaste, aceite / grasa</dd>
+          <dt>Evidencia</dt><dd class="ref">F.03 – F.06 · Anexo fotográfico</dd>
+        </dl>
+      </div>
+      <p style="margin-top:8px"><b>Observación.</b> Fisuras lineales y desgaste en zona de viraje.</p>
+      <p style="margin:0"><b>Recomendación de terreno.</b> Evaluar reparación localizada y preparación mecánica.</p>
+    </div>
+  </article>
+
+  <article class="sector">
+    <div class="sector-h">
+      <div>
+        <div class="sector-id">SECTOR 02</div>
+        <h3>Pasillo principal</h3>
+      </div>
+      <div>
+        <span class="badge b-bad">Malo</span>
+        <span class="badge b-med">Criticidad media</span>
+      </div>
+    </div>
+    <div class="sector-b">
+      <div class="grid-2">
+        <dl class="kv">
+          <dt>Superficie</dt><dd>250 m²</dd>
+          <dt>Uso</dt><dd>Grúa horquilla, transpaletas</dd>
+          <dt>Tráfico</dt><dd>Alto</dd>
+        </dl>
+        <dl class="kv">
+          <dt>Exposición</dt><dd>Abrasión, impactos</dd>
+          <dt>Problemas</dt><dd>Juntas deterioradas, desprendimiento</dd>
+          <dt>Evidencia</dt><dd class="ref">F.07 – F.09 · Anexo fotográfico</dd>
+        </dl>
+      </div>
+      <p style="margin-top:8px;margin-bottom:0"><b>Observación.</b> Juntas abiertas y desprendimiento en huella de rueda.</p>
+    </div>
+  </article>
+
+  <article class="sector">
+    <div class="sector-h">
+      <div>
+        <div class="sector-id">SECTOR 03</div>
+        <h3>Zona despacho</h3>
+      </div>
+      <div>
+        <span class="badge b-good">Bueno</span>
+        <span class="badge b-low">Criticidad baja</span>
+      </div>
+    </div>
+    <div class="sector-b">
+      <div class="grid-2">
+        <dl class="kv">
+          <dt>Superficie</dt><dd>500 m²</dd>
+          <dt>Uso</dt><dd>Despacho, transpaletas</dd>
+          <dt>Tráfico</dt><dd>Medio</dd>
+        </dl>
+        <dl class="kv">
+          <dt>Exposición</dt><dd>Abrasión</dd>
+          <dt>Problemas</dt><dd>Sin problemas registrados</dd>
+          <dt>Evidencia</dt><dd class="ref">F.10 · Anexo fotográfico</dd>
+        </dl>
+      </div>
+      <p style="margin-top:8px;margin-bottom:0"><b>Observación.</b> Superficie estable, sin hallazgos relevantes.</p>
+    </div>
+  </article>
+
+  <h2><span class="n">05</span>Conclusión</h2>
+  <div class="concl">
+    <h3>Se observa deterioro principalmente en áreas de producción.</h3>
+    <p>Evaluar preparación del sustrato antes de definir sistema epóxico. El pasillo principal presenta juntas abiertas y desprendimiento en huella de rueda; la zona de despacho se mantiene estable.</p>
+    <p style="margin:0"><b>Prioridad de intervención:</b> 1) Área producción · 2) Pasillo principal · 3) Zona despacho (mantener).</p>
+  </div>
+
+  <h2><span class="n">06</span>Cómo se archiva</h2>
+  <p>El PDF queda identificado para que la empresa ordene por carpeta, no por visita suelta:</p>
+  <table class="plain">
+    <tr><th>Nivel</th><td><b>Cliente</b> → Industrias del Pacífico</td></tr>
+    <tr><th>Nivel</th><td><b>Proyecto</b> → Planta Coronel (un recinto puede tener varios levantamientos)</td></tr>
+    <tr><th>Archivo</th><td><b>LEV-2026-0018_Industrias-del-Pacifico_Planta-Coronel.pdf</b></td></tr>
+    <tr><th>Portada</th><td>Cliente, recinto, código, fecha y servicio, siempre visibles</td></tr>
+  </table>
+
+  <div class="page-break"></div>
+  <div class="proposal-bar">
+    <div>Propuesta de formato · no es un informe real</div>
+    <div>LEV-2026-0018 · Evidencia fotográfica</div>
+  </div>
+
+  <h2><span class="n">07</span>Evidencia fotográfica</h2>
+  <p class="evidence-lead">
+    Las fotos van juntas, al final. Cada hallazgo cita su código (F.03, F.07…). Aquí se ven agrandadas, agrupadas por recinto y por sector, con categoría y nota.
+  </p>
+
+  <table class="plain">
+    <thead>
+      <tr>
+        <th style="width:14%">Código</th>
+        <th style="width:28%">Ubicación</th>
+        <th style="width:22%">Categoría</th>
+        <th>Nota</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><th>F.01 – F.02</th><td>Contexto del recinto</td><td>Vista general</td><td>Acceso y nave completa</td></tr>
+      <tr><th>F.03 – F.06</th><td>Sector 01 · Área producción</td><td>Vista general, fisura, contaminación, desgaste</td><td>Viraje, aceite y tráfico</td></tr>
+      <tr><th>F.07 – F.09</th><td>Sector 02 · Pasillo principal</td><td>Junta, desprendimiento, vista general</td><td>Huella de rueda</td></tr>
+      <tr><th>F.10</th><td>Sector 03 · Zona despacho</td><td>Vista general</td><td>Sin hallazgos</td></tr>
+    </tbody>
+  </table>
+
+  <section class="evidence-group">
+    <div class="evidence-h">
+      <h3>Contexto del recinto</h3>
+      <div class="range">F.01 – F.02</div>
+    </div>
+    <div class="shots">
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.01</span><span class="shot-cat">Vista general</span></div>
+          <div class="shot-cap">Acceso a planta</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.02</span><span class="shot-cat">Vista general</span></div>
+          <div class="shot-cap">Nave completa</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="evidence-group">
+    <div class="evidence-h">
+      <h3>Sector 01 · Área producción</h3>
+      <div class="range">F.03 – F.06</div>
+    </div>
+    <div class="shots">
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.03</span><span class="shot-cat">Vista general</span></div>
+          <div class="shot-cap">Nave de producción, eje central</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.04</span><span class="shot-cat">Fisura</span></div>
+          <div class="shot-cap">Fisura lineal junto a viraje</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.05</span><span class="shot-cat">Contaminación</span></div>
+          <div class="shot-cap">Mancha de aceite en huella</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.06</span><span class="shot-cat">Desgaste</span></div>
+          <div class="shot-cap">Desgaste superficial por tráfico</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="page-break"></div>
+  <div class="proposal-bar">
+    <div>Propuesta de formato · no es un informe real</div>
+    <div>LEV-2026-0018 · Evidencia fotográfica</div>
+  </div>
+
+  <section class="evidence-group">
+    <div class="evidence-h">
+      <h3>Sector 02 · Pasillo principal</h3>
+      <div class="range">F.07 – F.09</div>
+    </div>
+    <div class="shots">
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.07</span><span class="shot-cat">Junta</span></div>
+          <div class="shot-cap">Junta abierta en pasillo</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.08</span><span class="shot-cat">Desprendimiento</span></div>
+          <div class="shot-cap">Huella de rueda, borde izquierdo</div>
+        </div>
+      </article>
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.09</span><span class="shot-cat">Vista general</span></div>
+          <div class="shot-cap">Pasillo hacia despacho</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="evidence-group">
+    <div class="evidence-h">
+      <h3>Sector 03 · Zona despacho</h3>
+      <div class="range">F.10</div>
+    </div>
+    <div class="shots">
+      <article class="shot">
+        <div class="shot-frame">Fotografía</div>
+        <div class="shot-meta">
+          <div class="shot-top"><span class="shot-code">F.10</span><span class="shot-cat">Vista general</span></div>
+          <div class="shot-cap">Zona despacho, estado general</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <p class="foot-note">
+    Este documento es una <b>propuesta de estructura</b> con datos de ejemplo. No reemplaza el informe generado desde la app.
+    La versión real usará el logo VICAST, los datos del cliente y del proyecto, los sectores del levantamiento y las fotografías de evidencia.
+    Superficies más fuertes para un mejor mañana · vicast.cl
+  </p>
+</body>
+</html>

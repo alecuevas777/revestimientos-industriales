@@ -9,6 +9,14 @@ export function formatDate(value: string) {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+export function formatDateLong(value: string) {
+  return parseDate(value).toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function formatTime(value: string) {
   const date = parseDate(value);
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;

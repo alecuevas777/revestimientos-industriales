@@ -66,14 +66,12 @@ function ChoiceChipsInner<T extends string>(props: SingleProps<T> | MultiProps<T
         {props.options.map((option) => {
           const active = multi ? picked.includes(option.value) : pickedKey === option.value;
           return (
-            <QuietPressable
-              key={option.value}
-              onPress={() => press(option.value)}
-              style={[styles.chip, active ? styles.chipOn : styles.chipOff]}
-            >
-              <Text style={[styles.chipText, active ? styles.chipTextOn : styles.chipTextOff]}>
-                {option.label}
-              </Text>
+            <QuietPressable key={option.value} onPress={() => press(option.value)}>
+              <View style={[styles.chip, active ? styles.chipOn : styles.chipOff]}>
+                <Text style={[styles.chipText, active ? styles.chipTextOn : styles.chipTextOff]}>
+                  {option.label}
+                </Text>
+              </View>
             </QuietPressable>
           );
         })}
@@ -93,6 +91,8 @@ const styles = StyleSheet.create({
   chip: {
     minHeight: 44,
     justifyContent: 'center',
+    alignSelf: 'flex-start',
+    flexShrink: 0,
     borderRadius: 999,
     paddingHorizontal: 16,
   },

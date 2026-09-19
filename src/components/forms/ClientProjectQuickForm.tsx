@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { ClientProjectReportFields, type ReportClientFields, type ReportProjectFields } from '@/components/forms/ClientProjectReportFields';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { ClientProjectSetup } from '@/types';
@@ -12,9 +13,9 @@ type Props = {
 
 export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
   const [clientName, setClientName] = useState('');
-  const [contactName, setContactName] = useState('');
   const [projectName, setProjectName] = useState('');
-  const [city, setCity] = useState('');
+  const [client, setClient] = useState<ReportClientFields>({});
+  const [project, setProject] = useState<ReportProjectFields>({});
   const [errors, setErrors] = useState<{ client?: string; project?: string }>({});
 
   function handleSubmit() {
@@ -25,18 +26,25 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
     setErrors(nextErrors);
     if (nextErrors.client || nextErrors.project) return;
 
-    const cityValue = city.trim() || undefined;
+    const city = project.city?.trim() || client.city?.trim() || undefined;
+    const address = project.address?.trim() || client.address?.trim() || undefined;
     onSubmit({
       client: {
         name: clientName.trim(),
-        contactName: contactName.trim() || undefined,
-        city: cityValue,
+        rut: client.rut?.trim() || undefined,
+        contactName: client.contactName?.trim() || undefined,
+        phone: client.phone?.trim() || undefined,
+        email: client.email?.trim() || undefined,
+        address: client.address?.trim() || address,
+        city: client.city?.trim() || city,
       },
       project: {
         name: projectName.trim(),
-        city: cityValue,
-        location: cityValue,
-        address: cityValue,
+        address,
+        city,
+        location: city,
+        siteContactName: project.siteContactName?.trim() || undefined,
+        siteContactPhone: project.siteContactPhone?.trim() || undefined,
         status: 'active',
       },
     });
@@ -45,7 +53,7 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
   return (
     <View className="gap-5">
       <Text className="text-sm leading-5 text-muted">
-        El cliente es la empresa. El proyecto es la planta o recinto. Un cliente puede tener varios proyectos.
+        El cliente es la empresa. El proyecto es la planta o recinto. Estos datos se usan después en el informe PDF.
       </Text>
       <View className="gap-4">
         <Text className="text-base font-semibold text-ink">Cliente</Text>
@@ -59,13 +67,6 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
           }}
           error={errors.client}
           placeholder="Industrias del Pacífico"
-        />
-        <Input
-          label="Contacto (opcional)"
-          hint="Persona de la empresa, no el nombre del cliente."
-          value={contactName}
-          onChangeText={setContactName}
-          placeholder="María Soto"
         />
       </View>
 
@@ -82,13 +83,14 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
           error={errors.project}
           placeholder="Planta Coronel"
         />
-        <Input
-          label="Ciudad / ubicación (opcional)"
-          value={city}
-          onChangeText={setCity}
-          placeholder="Coronel"
-        />
       </View>
+
+      <ClientProjectReportFields
+        client={client}
+        project={project}
+        onChangeClient={(patch) => setClient((current) => ({ ...current, ...patch }))}
+        onChangeProject={(patch) => setProject((current) => ({ ...current, ...patch }))}
+      />
 
       <Button label="Crear y continuar" onPress={handleSubmit} loading={submitting} />
     </View>

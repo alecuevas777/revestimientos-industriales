@@ -149,9 +149,11 @@ export default function ElementEditorScreen() {
             photos={element.photos}
             categories={photoCategoriesForService(survey.serviceType)}
             editable
-            onAdd={(uri) =>
-              void addPhoto({ surveyId, sectorId: sector.id, elementId: element.id, uri }).then(() => tick())
-            }
+            onAdd={async (uri) => {
+              const photo = await addPhoto({ surveyId, sectorId: sector.id, elementId: element.id, uri });
+              tick();
+              return photo;
+            }}
             onUpdate={(photoId, photoPatch) => {
               void updatePhoto(surveyId, photoId, photoPatch);
               tick();

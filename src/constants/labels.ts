@@ -65,9 +65,9 @@ export const SCOPE_LABELS: Record<SurveyScope, string> = {
 };
 
 export const SCOPE_HINTS: Record<SurveyScope, string> = {
-  complete: 'Se registra el recinto como un conjunto.',
-  sectors: 'Divide el recinto en zonas con su propio estado.',
-  critical_points: 'Documenta solo los puntos que requieren atención.',
+  complete: 'Se registra el recinto como un conjunto. La superficie total va aquí; los sectores son opcionales.',
+  sectors: 'Divide el recinto en zonas. Cada sector puede tener su propia superficie, que suma al total.',
+  critical_points: 'Documenta solo los puntos que requieren atención. La superficie total del recinto sigue siendo de la visita.',
 };
 
 export const CONDITION_LABELS: Record<SurfaceCondition, string> = {

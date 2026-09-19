@@ -127,7 +127,8 @@ function FloorFields({
         onChange={(substrate) => onPatch({ substrate })}
       />
       <Input
-        label="Superficie aproximada (m²)"
+        label="Superficie total aproximada (m²)"
+        hint="Del piso o recinto que se inspecciona en esta visita. No es el área de cada sector."
         value={data.totalArea ? String(data.totalArea) : ''}
         onChangeText={(value) => {
           const parsed = Number(value.replace(',', '.'));
@@ -216,7 +217,8 @@ function RoofFields({
         onChange={(roofKind) => onPatch({ roofKind })}
       />
       <Input
-        label="Superficie aproximada (m²)"
+        label="Superficie total aproximada (m²)"
+        hint="De la cubierta que se inspecciona en esta visita. El desglose por zona va en cada sector."
         value={data.totalArea ? String(data.totalArea) : ''}
         onChangeText={(value) => {
           const parsed = Number(value.replace(',', '.'));

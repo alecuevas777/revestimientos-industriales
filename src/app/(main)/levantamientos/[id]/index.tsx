@@ -233,7 +233,7 @@ export default function SurveyDetailScreen() {
             <>
               <InfoRow label="Superficie" value={data.surfaceKind ? FLOOR_SURFACE_LABELS[data.surfaceKind] : '—'} />
               <InfoRow label="Sustrato" value={data.substrate ? FLOOR_SUBSTRATE_LABELS[data.substrate] : '—'} />
-              <InfoRow label="Área" value={formatArea(data.totalArea)} />
+              <InfoRow label="Superficie total" value={formatArea(data.totalArea)} />
               <InfoRow
                 label="Revestimiento existente"
                 value={
@@ -269,7 +269,7 @@ export default function SurveyDetailScreen() {
           {data.type === 'roof_waterproofing' ? (
             <>
               <InfoRow label="Tipo de cubierta" value={data.roofKind ? ROOF_KIND_LABELS[data.roofKind] : '—'} />
-              <InfoRow label="Área" value={formatArea(data.totalArea)} />
+              <InfoRow label="Superficie total" value={formatArea(data.totalArea)} />
             </>
           ) : null}
           {data.type === 'corrosion_control' ? (

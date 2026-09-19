@@ -7,6 +7,8 @@ import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 
 type Props = {
   children: ReactNode;
+  footer?: ReactNode;
+  overlay?: ReactNode;
   scroll?: boolean;
   padded?: boolean;
   bottomSafe?: boolean;
@@ -16,6 +18,8 @@ type Props = {
 
 export function Screen({
   children,
+  footer,
+  overlay,
   scroll = true,
   padded = true,
   bottomSafe = true,
@@ -23,7 +27,7 @@ export function Screen({
   onRefresh,
 }: Props) {
   const content = (
-    <View className={`flex-1 ${padded ? 'px-5 py-4' : ''}`}>{children}</View>
+    <View className={`${scroll ? '' : 'flex-1'} ${padded ? 'px-5 py-4' : ''}`.trim()}>{children}</View>
   );
 
   const refreshControl = onRefresh ? (
@@ -58,9 +62,11 @@ export function Screen({
             {content}
           </ScrollView>
         ) : (
-          content
+          <View className="flex-1">{content}</View>
         )}
+        {footer ? <View className={padded ? 'px-5 pb-3' : 'pb-3'}>{footer}</View> : null}
       </KeyboardAvoidingView>
+      {overlay}
     </SafeAreaView>
   );
 }

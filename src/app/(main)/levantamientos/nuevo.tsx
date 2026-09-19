@@ -3,6 +3,9 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { ClientProjectQuickForm } from '@/components/forms/ClientProjectQuickForm';
+import { ClientProjectReportEditor } from '@/components/forms/ClientProjectReportEditor';
+import type { ReportClientFields, ReportProjectFields } from '@/components/forms/ClientProjectReportFields';
+import { ReportGapsBanner } from '@/components/forms/ReportGapsBanner';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Button } from '@/components/ui/Button';
 import { FilterChips } from '@/components/ui/FilterChips';
@@ -13,6 +16,7 @@ import { SERVICE_TYPE_HINTS, SERVICE_TYPE_LABELS } from '@/constants/labels';
 import { useApp } from '@/context/AppProvider';
 import { useActionLock } from '@/hooks/useActionLock';
 import { replace, routeParam } from '@/lib/nav';
+import { clientProjectReportGaps } from '@/lib/reportReady';
 import type { ServiceType } from '@/types';
 
 const SERVICES: ServiceType[] = ['epoxy', 'pu_cement', 'roof_waterproofing', 'corrosion_control'];
@@ -22,7 +26,7 @@ export default function NewSurveyScreen() {
     projectId?: string;
     origen?: string;
   }>();
-  const { projects, clients, startSurvey, ensureClientAndProject } = useApp();
+  const { projects, clients, startSurvey, ensureClientAndProject, editClient, editProject } = useApp();
   const visibleProjects = useMemo(
     () =>
       projects.filter((project) => {
@@ -40,7 +44,50 @@ export default function NewSurveyScreen() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [savingOrigin, setSavingOrigin] = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
   const run = useActionLock();
+
+  const selectedProject = projects.find((item) => item.id === projectId);
+  const selectedClient = selectedProject
+    ? clients.find((client) => client.id === selectedProject.clientId)
+    : undefined;
+  const reportGaps = clientProjectReportGaps(selectedClient, selectedProject);
+
+  function saveReport(clientFields: ReportClientFields, projectFields: ReportProjectFields) {
+    if (!selectedClient || !selectedProject) return;
+    void run(async () => {
+      setSavingReport(true);
+      try {
+        await editClient(selectedClient.id, {
+          name: selectedClient.name,
+          rut: clientFields.rut?.trim() || undefined,
+          contactName: clientFields.contactName?.trim() || undefined,
+          contactRole: selectedClient.contactRole,
+          phone: clientFields.phone?.trim() || undefined,
+          email: clientFields.email?.trim() || undefined,
+          address: clientFields.address?.trim() || undefined,
+          city: clientFields.city?.trim() || undefined,
+          observations: selectedClient.observations,
+        });
+        const city = projectFields.city?.trim() || undefined;
+        await editProject(selectedProject.id, {
+          name: selectedProject.name,
+          clientId: selectedProject.clientId,
+          code: selectedProject.code,
+          address: projectFields.address?.trim() || undefined,
+          city,
+          location: selectedProject.location || city,
+          siteContactName: projectFields.siteContactName?.trim() || undefined,
+          siteContactPhone: projectFields.siteContactPhone?.trim() || undefined,
+          description: selectedProject.description,
+          status: selectedProject.status,
+          observations: selectedProject.observations,
+        });
+      } finally {
+        setSavingReport(false);
+      }
+    });
+  }
 
   async function begin() {
     if (!projectId) {
@@ -66,7 +113,10 @@ export default function NewSurveyScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Nuevo levantamiento" subtitle="Cliente, proyecto y tipo de servicio" />
+      <ScreenHeader
+        title="Nuevo levantamiento"
+        subtitle="Cliente, proyecto y datos que salen en el informe"
+      />
       <View className="gap-6 pb-6">
         {error ? <Text className="text-sm text-danger">{error}</Text> : null}
 
@@ -85,12 +135,12 @@ export default function NewSurveyScreen() {
           />
         ) : (
           <Text className="text-sm leading-5 text-muted">
-            Crea el cliente (empresa) y un proyecto (planta o recinto) con nombres distintos. Después eliges el servicio.
+            Crea el cliente (empresa) y un proyecto (planta o recinto). Completa también los datos del informe PDF.
           </Text>
         )}
 
         {origin === 'existing' && visibleProjects.length > 0 ? (
-          <View className="gap-2">
+          <View className="gap-3">
             <Text className="text-sm font-semibold text-ink">Proyecto</Text>
             {visibleProjects.map((item) => (
               <SelectableCard
@@ -104,24 +154,42 @@ export default function NewSurveyScreen() {
                 }}
               />
             ))}
+            {selectedClient && selectedProject ? (
+              <View className="gap-3">
+                <ReportGapsBanner missing={reportGaps} />
+                <ClientProjectReportEditor
+                  client={selectedClient}
+                  project={selectedProject}
+                  submitting={savingReport}
+                  onSave={saveReport}
+                />
+              </View>
+            ) : null}
           </View>
         ) : (
           <View className="gap-3">
             <Text className="text-sm font-semibold text-ink">Cliente y proyecto</Text>
             <Text className="text-sm leading-5 text-muted">
-              Primero la empresa, después el recinto. Un cliente puede tener varios proyectos, y un proyecto varios levantamientos.
+              Primero la empresa, después el recinto. Un cliente puede tener varios proyectos, y un proyecto varios
+              levantamientos.
             </Text>
             {projectId ? (
-              <View className="rounded-2xl border border-line bg-white px-4 py-3">
-                <Text className="text-base font-semibold text-ink">
-                  {projects.find((item) => item.id === projectId)?.name}
-                </Text>
-                <Text className="mt-1 text-sm text-muted">
-                  {clients.find(
-                    (client) =>
-                      client.id === projects.find((item) => item.id === projectId)?.clientId,
-                  )?.name}
-                </Text>
+              <View className="gap-3">
+                <View className="rounded-2xl border border-line bg-white px-4 py-3">
+                  <Text className="text-base font-semibold text-ink">{selectedProject?.name}</Text>
+                  <Text className="mt-1 text-sm text-muted">{selectedClient?.name}</Text>
+                </View>
+                {selectedClient && selectedProject && reportGaps.length > 0 ? (
+                  <>
+                    <ReportGapsBanner missing={reportGaps} />
+                    <ClientProjectReportEditor
+                      client={selectedClient}
+                      project={selectedProject}
+                      submitting={savingReport}
+                      onSave={saveReport}
+                    />
+                  </>
+                ) : null}
               </View>
             ) : (
               <ClientProjectQuickForm
@@ -168,11 +236,7 @@ export default function NewSurveyScreen() {
         ) : null}
 
         {projectId ? (
-          <Button
-            label="Comenzar levantamiento"
-            loading={creating}
-            onPress={() => void begin()}
-          />
+          <Button label="Comenzar levantamiento" loading={creating} onPress={() => void begin()} />
         ) : null}
       </View>
     </Screen>

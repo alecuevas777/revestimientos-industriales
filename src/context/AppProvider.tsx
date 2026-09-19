@@ -3,7 +3,14 @@ import { AppState, Text, View } from 'react-native';
 
 import { useAuth } from '@/context/AuthProvider';
 import { createId } from '@/lib/id';
-import { shouldSkipHydrate } from '@/lib/hydrateGate';
+import {
+  forgetWorkspace,
+  markHydrated,
+  rememberWorkspace,
+  rememberedWorkspace,
+  shouldSkipForegroundHydrate,
+  shouldSkipHydrate,
+} from '@/lib/hydrateGate';
 import { applyPersistedSurvey, cloneSectorFields, collectPhotos, mergeRemotePhotoPaths, nextSurveyCode, patchSurveyPhoto, removedSurveyChildren } from '@/lib/survey';
 import { clearRemovedChildren, noteRemovedChildren, peekRemovedChildren } from '@/lib/surveyDeletes';
 import { emptyServiceData } from '@/lib/service';
@@ -17,6 +24,7 @@ import {
   removeSurvey,
 } from '@/repositories/workspace';
 import { deleteLocalPhoto, savePhotoLocally } from '@/services/photoStorage';
+import { upsertPhotoRemote } from '@/remote';
 import {
   bindPhotoUploader,
   cancelPhotoUpload,
@@ -151,11 +159,12 @@ function buildProject(draft: ProjectDraft): Project {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
-  const [ready, setReady] = useState(false);
+  const remembered = session ? rememberedWorkspace(session.id) : null;
+  const [ready, setReady] = useState(() => Boolean(remembered));
   const [refreshing, setRefreshing] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [clients, setClients] = useState<Client[]>(() => remembered?.clients ?? []);
+  const [projects, setProjects] = useState<Project[]>(() => remembered?.projects ?? []);
+  const [surveys, setSurveys] = useState<Survey[]>(() => remembered?.surveys ?? []);
   const [toast, setToast] = useState<string | null>(null);
   const surveysRef = useRef<Survey[]>([]);
   const clientsRef = useRef<Client[]>([]);
@@ -170,10 +179,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const hydrateRef = useRef<(userId: string, mode: 'splash' | 'silent' | 'pull') => Promise<void>>(async () => {});
   const flushAllRef = useRef<() => Promise<void>>(async () => {});
   const actionsRef = useRef<AppActionsValue>(null!);
+  const readyRef = useRef(ready);
   surveysRef.current = surveys;
   clientsRef.current = clients;
   projectsRef.current = projects;
   sessionRef.current = session;
+  readyRef.current = ready;
 
   useEffect(() => {
     if (!session) {
@@ -181,6 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       persistTimers.current.clear();
       pendingRemote.current.clear();
       resetPhotoUploadQueue();
+      forgetWorkspace();
       setClients([]);
       setProjects([]);
       setSurveys([]);
@@ -190,7 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const userId = session.id;
-    void hydrateRef.current(userId, 'splash');
+    void hydrateRef.current(userId, readyRef.current ? 'silent' : 'splash');
 
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') {
@@ -255,6 +267,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return survey ? collectPhotos(survey).find((photo) => photo.id === photoId) : undefined;
     },
     onPatch: applyPhotoPatch,
+    ensureRemote: async (surveyId) => {
+      await runRemotePersist(surveyId, true);
+    },
   });
 
   function applyPersisted(result: Survey) {
@@ -298,13 +313,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   flushAllRef.current = flushAllSurveys;
   hydrateRef.current = async (userId, mode) => {
-    if (mode === 'silent' && shouldSkipHydrate()) return;
+    if (mode === 'silent' && shouldSkipForegroundHydrate()) return;
     if (hydratingRef.current) {
       pendingHydrateRef.current = true;
       return;
     }
     hydratingRef.current = true;
-    if (mode === 'splash') setReady(false);
+    if (mode === 'splash' && !readyRef.current) setReady(false);
     if (mode === 'pull') setRefreshing(true);
     try {
       await flushAllSurveys();
@@ -314,6 +329,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setProjects(result.snapshot.projects);
       surveysRef.current = result.snapshot.surveys;
       setSurveys(result.snapshot.surveys);
+      rememberWorkspace({
+        userId,
+        clients: result.snapshot.clients,
+        projects: result.snapshot.projects,
+        surveys: result.snapshot.surveys,
+      });
+      markHydrated();
       enqueuePendingPhotos(result.snapshot.surveys);
       if (result.fromCacheOnly && (mode === 'splash' || mode === 'pull')) {
         setToast(result.error ?? 'Sin conexión. Mostrando datos de este dispositivo.');
@@ -508,18 +530,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return commitSurvey({ ...current, ...survey, id: current.id }, { silent, flush: !silent });
       },
       completeSurvey: async (id) => {
+        const userId = requireUserId();
         const current = surveysRef.current.find((item) => item.id === id);
         if (!current) return null;
         const now = new Date().toISOString();
-        return commitSurvey(
-          {
-            ...current,
-            status: 'completed',
-            completedAt: now,
-            updatedAt: now,
-          },
-          { silent: true },
-        );
+        const stamped: Survey = {
+          ...current,
+          status: 'completed',
+          completedAt: now,
+          updatedAt: now,
+        };
+        noteRemovedChildren(stamped.id, removedSurveyChildren(current, stamped));
+        writeSurveyMemory(stamped);
+        publishSurveys();
+        await persistSurvey(userId, stamped, { remote: false });
+        pendingRemote.current.add(stamped.id);
+        void runRemotePersist(stamped.id, true);
+        return stamped;
       },
       reopenSurvey: async (id) => {
         const current = surveysRef.current.find((item) => item.id === id);
@@ -647,6 +674,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       },
       addPhoto: async ({ surveyId, sectorId, elementId, uri, category = 'overview' }) => {
+        const userId = requireUserId();
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return null;
         const localUri = await savePhotoLocally(uri);
@@ -691,25 +719,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
           await commitSurvey({ ...current, photos: [...current.photos, photo] }, { silent: true, flush: false });
         }
+        publishSurveys();
+        const stored = surveysRef.current.find((item) => item.id === surveyId) ?? current;
+        await persistSurvey(userId, stored, { remote: false });
         enqueuePhotoUpload(surveyId, photo.id);
         return photo;
       },
       updatePhoto: async (surveyId, photoId, patch) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);
         if (!current) return;
-        const mapPhoto = (photo: PhotoEvidence) => (photo.id === photoId ? { ...photo, ...patch } : photo);
-        await commitSurvey(
-          {
-            ...current,
-            photos: current.photos.map(mapPhoto),
-            sectors: current.sectors.map((sector) => ({
-              ...sector,
-              photos: sector.photos.map(mapPhoto),
-              elements: sector.elements.map((element) => ({ ...element, photos: element.photos.map(mapPhoto) })),
-            })),
-          },
-          { silent: true, flush: false },
+        await commitSurvey(patchSurveyPhoto(current, photoId, patch), { silent: true, flush: false });
+        const latest = collectPhotos(surveysRef.current.find((item) => item.id === surveyId) ?? current).find(
+          (photo) => photo.id === photoId,
         );
+        if (latest) void upsertPhotoRemote({ ...latest, category: latest.category ?? 'overview' }).catch(() => undefined);
       },
       removePhoto: async (surveyId, photoId) => {
         const current = surveysRef.current.find((item) => item.id === surveyId);

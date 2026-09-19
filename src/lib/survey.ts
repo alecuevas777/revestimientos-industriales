@@ -215,13 +215,13 @@ export function validateConditionFields(survey: Survey) {
   if (!survey.overallCondition) errors.push('Selecciona el estado general.');
   if (isFloorService(survey.serviceType) && survey.serviceData.type !== 'corrosion_control') {
     if (!survey.serviceData.totalArea || survey.serviceData.totalArea <= 0) {
-      errors.push('Ingresa la superficie aproximada en m².');
+      errors.push('Ingresa la superficie total aproximada en m².');
     }
   }
   if (survey.serviceData.type === 'roof_waterproofing') {
     if (!survey.serviceData.roofKind) errors.push('Selecciona el tipo de cubierta.');
     if (!survey.serviceData.totalArea || survey.serviceData.totalArea <= 0) {
-      errors.push('Ingresa la superficie aproximada en m².');
+      errors.push('Ingresa la superficie total aproximada en m².');
     }
   }
   return errors;

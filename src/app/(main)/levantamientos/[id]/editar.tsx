@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { PhotoGrid } from '@/components/PhotoGrid';
@@ -23,6 +23,7 @@ import { useConfirmAction } from '@/hooks/useConfirmAction';
 import { useEditorTick } from '@/hooks/useEditorTick';
 import { formatRelative } from '@/lib/format';
 import { push, replace, routeParam } from '@/lib/nav';
+import { clientProjectReportGaps } from '@/lib/reportReady';
 import {
   collectPhotos,
   resumeStep,
@@ -47,6 +48,8 @@ export default function EditSurveyScreen() {
     addPhoto,
     updatePhoto,
     removePhoto,
+    editClient,
+    editProject,
     completeSurvey,
     discardSurvey,
   } = useAppActions();
@@ -59,15 +62,16 @@ export default function EditSurveyScreen() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
   const [savedAt, setSavedAt] = useState(survey?.updatedAt);
   const [errors, setErrors] = useState<string[]>([]);
   const run = useActionLock();
   const { ask, modal } = useConfirmAction();
+  const finishingRef = useRef(false);
 
   useEffect(() => {
-    if (survey?.status === 'completed') {
-      replace(`/levantamientos/${survey.id}`);
-    }
+    if (!survey || survey.status !== 'completed' || finishingRef.current) return;
+    replace(`/levantamientos/${survey.id}`);
   }, [survey?.id, survey?.status]);
 
   const savedLabel = useMemo(() => {
@@ -92,6 +96,11 @@ export default function EditSurveyScreen() {
   }
 
   const draft = survey;
+  const reportGaps = clientProjectReportGaps(client, project);
+
+  function latestDraft() {
+    return getSurvey(draft.id) ?? draft;
+  }
 
   function confirmRemoveSector(sectorId: string) {
     ask({
@@ -102,11 +111,12 @@ export default function EditSurveyScreen() {
   }
 
   function next() {
+    const current = latestDraft();
     const nextErrors =
       step === 1
-        ? validateConditionFields(draft)
-        : step === 2 && surveyNeedsSector(draft) && draft.sectors.filter((item) => item.name.trim()).length === 0
-          ? [draft.scope === 'critical_points' ? 'Registra al menos un punto crítico.' : 'Agrega al menos un sector.']
+        ? validateConditionFields(current)
+        : step === 2 && surveyNeedsSector(current) && current.sectors.filter((item) => item.name.trim()).length === 0
+          ? [current.scope === 'critical_points' ? 'Registra al menos un punto crítico.' : 'Agrega al menos un sector.']
           : [];
     if (nextErrors.length) {
       setErrors(nextErrors);
@@ -116,8 +126,99 @@ export default function EditSurveyScreen() {
     setStep((current) => Math.min(current + 1, LAST_STEP));
   }
 
+  function tryFinish() {
+    const nextErrors = validateSurveyForComplete(latestDraft());
+    setErrors(nextErrors);
+    if (nextErrors.length === 0) setConfirmOpen(true);
+  }
+
+  async function finish() {
+    const current = latestDraft();
+    const nextErrors = validateSurveyForComplete(current);
+    if (nextErrors.length) {
+      setErrors(nextErrors);
+      setConfirmOpen(false);
+      return;
+    }
+    finishingRef.current = true;
+    setSaving(true);
+    try {
+      const done = await completeSurvey(current.id);
+      if (!done) {
+        finishingRef.current = false;
+        setErrors(['No se pudo finalizar el levantamiento. Inténtalo de nuevo.']);
+        return;
+      }
+      setConfirmOpen(false);
+      replace(`/levantamientos/${current.id}/exito`);
+    } catch (error) {
+      finishingRef.current = false;
+      setErrors([error instanceof Error ? error.message : 'No se pudo finalizar el levantamiento.']);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <Screen>
+    <Screen
+      footer={
+        <View className="gap-3 pt-2">
+          {errors.length > 0 ? (
+            <View className="rounded-2xl border border-danger-light bg-danger-light px-4 py-3">
+              {errors.map((error) => (
+                <Text key={error} className="text-sm leading-5 text-danger">
+                  {error}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+          {step < LAST_STEP ? (
+            <Button label="Continuar" onPress={next} />
+          ) : (
+            <Button label="Finalizar levantamiento" loading={saving} onPress={tryFinish} />
+          )}
+          {step > 0 ? (
+            <Button label="Volver" variant="ghost" onPress={() => setStep((current) => current - 1)} />
+          ) : (
+            <Button label="Salir y continuar después" variant="ghost" onPress={() => replace('/(tabs)')} />
+          )}
+          <Button label="Descartar borrador" variant="ghost" onPress={() => setDiscardOpen(true)} />
+        </View>
+      }
+      overlay={
+        <>
+          <ConfirmModal
+            visible={confirmOpen}
+            title="¿Finalizar levantamiento?"
+            message={
+              reportGaps.length
+                ? `El informe PDF saldrá incompleto: ${reportGaps.join(', ')}. Puedes finalizar igual o volver a Información para completarlos.`
+                : 'Podrás consultar toda la información posteriormente desde el historial.'
+            }
+            confirmLabel="Finalizar"
+            loading={saving}
+            onCancel={() => {
+              if (!saving) setConfirmOpen(false);
+            }}
+            onConfirm={() => void run(finish)}
+          />
+          <ConfirmModal
+            visible={discardOpen}
+            title="¿Descartar borrador?"
+            message="Se eliminará este levantamiento incompleto de este dispositivo."
+            confirmLabel="Descartar"
+            destructive
+            onCancel={() => setDiscardOpen(false)}
+            onConfirm={async () => {
+              setDiscardOpen(false);
+              await discardSurvey(draft.id);
+              replace('/levantamientos');
+            }}
+          />
+          {modal}
+        </>
+      }
+    >
       <ScreenHeader title={draft.code} subtitle="Borrador · se guarda solo en este dispositivo" />
       <ProgressHeader step={step} savedLabel={savedLabel} />
 
@@ -127,7 +228,22 @@ export default function EditSurveyScreen() {
           project={project}
           client={client}
           technician={session?.name ?? 'Técnico'}
+          savingReport={savingReport}
           onChange={(visitReason) => void patch({ visitReason })}
+          onSaveReport={
+            client && project
+              ? async (clientDraft, projectDraft) => {
+                  setSavingReport(true);
+                  try {
+                    await editClient(client.id, clientDraft);
+                    await editProject(project.id, projectDraft);
+                    tick();
+                  } finally {
+                    setSavingReport(false);
+                  }
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -168,7 +284,11 @@ export default function EditSurveyScreen() {
             sectors={draft.sectors}
             categories={photoCategoriesForService(draft.serviceType)}
             editable
-            onAdd={(uri) => void addPhoto({ surveyId: draft.id, uri, category: 'overview' }).then(() => tick())}
+            onAdd={async (uri) => {
+              const photo = await addPhoto({ surveyId: draft.id, uri, category: 'overview' });
+              tick();
+              return photo;
+            }}
             onUpdate={(photoId, photoPatch) => {
               void updatePhoto(draft.id, photoId, photoPatch);
               tick();
@@ -193,63 +313,6 @@ export default function EditSurveyScreen() {
           onRemoveSector={confirmRemoveSector}
         />
       ) : null}
-
-      <View className="mt-8 gap-3 pb-6">
-        {step < LAST_STEP ? (
-          <Button label="Continuar" onPress={next} />
-        ) : (
-          <Button
-            label="Finalizar levantamiento"
-            loading={saving}
-            onPress={() => {
-              const nextErrors = validateSurveyForComplete(draft);
-              setErrors(nextErrors);
-              if (nextErrors.length === 0) setConfirmOpen(true);
-            }}
-          />
-        )}
-        {step > 0 ? (
-          <Button label="Volver" variant="ghost" onPress={() => setStep((current) => current - 1)} />
-        ) : (
-          <Button label="Salir y continuar después" variant="ghost" onPress={() => replace('/(tabs)')} />
-        )}
-        <Button label="Descartar borrador" variant="ghost" onPress={() => setDiscardOpen(true)} />
-      </View>
-
-      <ConfirmModal
-        visible={confirmOpen}
-        title="¿Finalizar levantamiento?"
-        message="Podrás consultar toda la información posteriormente desde el historial."
-        confirmLabel="Finalizar"
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() =>
-          void run(async () => {
-            setConfirmOpen(false);
-            setSaving(true);
-            try {
-              await completeSurvey(draft.id);
-              replace(`/levantamientos/${draft.id}/exito`);
-            } finally {
-              setSaving(false);
-            }
-          })
-        }
-      />
-
-      <ConfirmModal
-        visible={discardOpen}
-        title="¿Descartar borrador?"
-        message="Se eliminará este levantamiento incompleto de este dispositivo."
-        confirmLabel="Descartar"
-        destructive
-        onCancel={() => setDiscardOpen(false)}
-        onConfirm={async () => {
-          setDiscardOpen(false);
-          await discardSurvey(draft.id);
-          replace('/levantamientos');
-        }}
-      />
-      {modal}
     </Screen>
   );
 }

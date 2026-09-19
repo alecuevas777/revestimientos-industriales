@@ -26,7 +26,14 @@ export function ConfirmModal({
   onCancel,
 }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? () => undefined : onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      onRequestClose={loading ? () => undefined : onCancel}
+    >
       <Pressable className="flex-1 justify-end bg-black/40 px-5 pb-10" onPress={loading ? () => undefined : onCancel}>
         <Pressable className="rounded-3xl bg-white p-5" onPress={() => undefined}>
           <Text className="text-xl font-bold text-ink">{title}</Text>

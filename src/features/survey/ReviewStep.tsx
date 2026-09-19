@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { InfoRow } from '@/components/InfoRow';
+import { ReportGapsBanner } from '@/components/forms/ReportGapsBanner';
 import { SectorCard } from '@/components/SectorCard';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Card } from '@/components/ui/Card';
@@ -10,6 +10,7 @@ import { formatArea, formatDate, formatTime } from '@/lib/format';
 import { surveyHeadline, surveyMetrics } from '@/lib/display';
 import { push } from '@/lib/nav';
 import { criticalItemCount, maxSeverity } from '@/lib/survey';
+import { clientProjectReportGaps } from '@/lib/reportReady';
 import type { Client, Project, Survey } from '@/types';
 
 type Props = {
@@ -24,6 +25,7 @@ type Props = {
 export function ReviewStep({ survey, project, client, technician, errors, onRemoveSector }: Props) {
   const highest = maxSeverity(survey);
   const metrics = surveyMetrics(survey);
+  const missingReport = clientProjectReportGaps(client, project);
   const mainProblems =
     'problems' in survey.serviceData
       ? survey.serviceData.problems.slice(0, 4).map((id) => PROBLEM_LABELS[id])
@@ -41,6 +43,11 @@ export function ReviewStep({ survey, project, client, technician, errors, onRemo
         </View>
       ) : null}
 
+      <ReportGapsBanner
+        missing={missingReport}
+        hint="Vuelve a Información para completarlos. Puedes finalizar el levantamiento igual."
+      />
+
       <Card>
         <Text className="text-lg font-bold text-ink">{survey.code}</Text>
         <Text className="mt-1 text-base text-muted">{project?.name ?? '—'}</Text>
@@ -51,7 +58,7 @@ export function ReviewStep({ survey, project, client, technician, errors, onRemo
         <View className="mt-4">
           <InfoRow label="Cliente" value={client?.name} />
           <InfoRow label="Alcance" value={survey.scope ? SCOPE_LABELS[survey.scope] : '—'} />
-          {metrics.area ? <InfoRow label="Superficie" value={formatArea(metrics.area)} /> : null}
+          {metrics.area ? <InfoRow label="Superficie total" value={formatArea(metrics.area)} /> : null}
           <InfoRow label="Sectores" value={metrics.sectors} />
           {metrics.elements > 0 ? <InfoRow label="Elementos" value={metrics.elements} /> : null}
           <InfoRow label="Problemas detectados" value={metrics.problems} />

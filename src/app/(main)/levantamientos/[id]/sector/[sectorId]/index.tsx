@@ -81,7 +81,12 @@ export default function SectorEditorScreen() {
         />
         {survey.serviceType !== 'corrosion_control' ? (
           <Input
-            label="Superficie aproximada (m²)"
+            label="Superficie de este sector (m²)"
+            hint={
+              survey.scope === 'complete'
+                ? 'Opcional. La superficie total de la visita ya se registró en Condiciones.'
+                : 'Desglose de la superficie total. Sirve para cotizar o reparar por zona.'
+            }
             value={sector.approximateArea ? String(sector.approximateArea) : ''}
             onChangeText={(value) => {
               const parsed = Number(value.replace(',', '.'));
@@ -228,9 +233,11 @@ export default function SectorEditorScreen() {
             photos={sector.photos}
             categories={photoCategoriesForService(survey.serviceType)}
             editable
-            onAdd={(uri) =>
-              void addPhoto({ surveyId, sectorId: sector.id, uri }).then(() => tick())
-            }
+            onAdd={async (uri) => {
+              const photo = await addPhoto({ surveyId, sectorId: sector.id, uri });
+              tick();
+              return photo;
+            }}
             onUpdate={(photoId, photoPatch) => {
               void updatePhoto(surveyId, photoId, photoPatch);
               tick();

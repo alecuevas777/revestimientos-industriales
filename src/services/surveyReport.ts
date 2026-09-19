@@ -13,8 +13,8 @@ import { buildSurveyReportHtml, type PreparedShot } from '@/lib/surveyReportHtml
 import { needsPhotoUpload } from '@/lib/survey';
 import type { Client, PhotoEvidence, Project, Survey } from '@/types';
 
-const REPORT_MAX_EDGE = 1000;
-const REPORT_JPEG_QUALITY = 0.58;
+const REPORT_MAX_EDGE = 1600;
+const REPORT_JPEG_QUALITY = 0.78;
 
 export type SurveyReportInput = {
   survey: Survey;

@@ -61,8 +61,11 @@ function shotCard(shot: PreparedShot) {
   return `<article class="shot">
     <div class="shot-frame">${frame}</div>
     <div class="shot-meta">
-      <div class="shot-top"><span class="shot-code">${escapeHtml(shot.code)}</span><span class="shot-cat">${escapeHtml(shot.category)}</span></div>
-      <div class="shot-cap">${escapeHtml(shot.caption)}</div>
+      <div class="shot-code">${escapeHtml(shot.code)}</div>
+      <dl class="shot-fields">
+        <dt>Categoría</dt><dd>${escapeHtml(shot.category)}</dd>
+        <dt>Nota</dt><dd>${escapeHtml(shot.caption)}</dd>
+      </dl>
     </div>
   </article>`;
 }
@@ -158,20 +161,44 @@ table.plain { width: 100%; border-collapse: collapse; }
 table.plain th, table.plain td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #E5E5E5; vertical-align: top; font-size: 9pt; }
 table.plain th { width: 28%; color: #6B7280; font-weight: 600; }
 .evidence-lead { margin: 0 0 12px; color: #6B7280; }
-.evidence-group { margin: 0 0 16px; page-break-inside: avoid; }
-.evidence-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-bottom: 6px; margin-bottom: 8px; border-bottom: 2px solid #121212; }
+.evidence-group { margin: 0 0 18px; }
+.evidence-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-bottom: 6px; margin-bottom: 10px; border-bottom: 2px solid #121212; page-break-after: avoid; }
 .evidence-h h3 { margin: 0; font-size: 11pt; }
 .evidence-h .range { font-size: 8.5pt; color: #6B7280; font-weight: 700; }
-.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.shot { border: 1px solid #E5E5E5; }
-.shot-frame { height: 128px; background: #F3F4F6; overflow: hidden; }
-.shot-frame img { width: 100%; height: 128px; object-fit: cover; display: block; }
-.shot-missing { height: 128px; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.shot-meta { padding: 7px 9px; }
-.shot-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
-.shot-code { font-weight: 800; font-size: 9.5pt; }
-.shot-cat { font-size: 7.5pt; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: #FFE8D6; color: #9A3412; padding: 1px 6px; }
-.shot-cap { font-size: 8.5pt; color: #6B7280; }
+.shots { display: flex; flex-direction: column; gap: 14px; }
+.shot { border: 1px solid #E5E5E5; page-break-inside: avoid; break-inside: avoid; }
+.shot-frame {
+  background: #1A1A1A;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shot-frame img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 145mm;
+  object-fit: contain;
+  object-position: center;
+}
+.shot-missing {
+  min-height: 80mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.shot-meta { padding: 10px 12px 12px; background: #fff; border-top: 1px solid #E5E5E5; }
+.shot-code { font-weight: 800; font-size: 12pt; margin-bottom: 6px; }
+.shot-fields { display: grid; grid-template-columns: 78px 1fr; gap: 4px 10px; margin: 0; }
+.shot-fields dt { color: #6B7280; font-size: 8.5pt; padding-top: 1px; }
+.shot-fields dd { margin: 0; font-weight: 600; font-size: 10pt; }
 .foot-note { margin-top: 16px; font-size: 8pt; color: #6B7280; border-top: 1px solid #E5E5E5; padding-top: 8px; white-space: pre-line; }
 `;
 
@@ -251,8 +278,7 @@ export function buildSurveyReportHtml(input: {
 
   const evidenceGroups = groups
     .map(
-      (group, index) => `${index === 2 ? '<div class="page-break"></div>' : ''}
-        <section class="evidence-group">
+      (group) => `<section class="evidence-group">
           <div class="evidence-h">
             <h3>${escapeHtml(group.title)}</h3>
             <div class="range">${escapeHtml(group.range)}</div>
@@ -354,7 +380,7 @@ export function buildSurveyReportHtml(input: {
   ${
     shots.length === 0
       ? '<p class="muted">No se registraron fotografías en este levantamiento.</p>'
-      : `<p class="evidence-lead">Las fotos van juntas, al final. Cada hallazgo cita su código. Están agrupadas por recinto y por sector, con categoría y nota.</p>
+      : `<p class="evidence-lead">Cada fotografía se muestra completa, sin recortes. Debajo van el código, la categoría y la nota.</p>
         <table class="plain">
           <thead><tr><th style="width:14%">Código</th><th style="width:28%">Ubicación</th><th style="width:22%">Categoría</th><th>Nota</th></tr></thead>
           <tbody>${evidenceIndex}</tbody>

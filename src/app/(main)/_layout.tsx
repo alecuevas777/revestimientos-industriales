@@ -20,6 +20,7 @@ export default function MainLayout() {
     >
       <Drawer.Screen name="(tabs)" options={hidden} />
       <Drawer.Screen name="perfil" options={hidden} />
+      <Drawer.Screen name="perfil-editar" options={hidden} />
       <Drawer.Screen name="clientes" options={hidden} />
       <Drawer.Screen name="proyectos" options={hidden} />
       <Drawer.Screen name="levantamientos" options={hidden} />

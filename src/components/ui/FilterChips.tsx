@@ -8,21 +8,46 @@ type Option<T extends string> = {
   label: string;
 };
 
-type Props<T extends string> = {
-  value: T;
+type Base<T extends string> = {
   options: Option<T>[];
+};
+
+type SingleProps<T extends string> = Base<T> & {
+  value: T;
+  values?: never;
   onChange: (value: T) => void;
 };
 
-export function FilterChips<T extends string>({ value, options, onChange }: Props<T>) {
+type MultiProps<T extends string> = Base<T> & {
+  values: T[];
+  value?: never;
+  onChange: (values: T[]) => void;
+};
+
+function isMulti<T extends string>(props: SingleProps<T> | MultiProps<T>): props is MultiProps<T> {
+  return Array.isArray((props as MultiProps<T>).values);
+}
+
+export function FilterChips<T extends string>(props: SingleProps<T> | MultiProps<T>) {
+  function press(option: T) {
+    if (isMulti(props)) {
+      const next = props.values.includes(option)
+        ? props.values.filter((item) => item !== option)
+        : [...props.values, option];
+      props.onChange(next);
+      return;
+    }
+    props.onChange(option);
+  }
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-      {options.map((option) => {
-        const selected = option.value === value;
+      {props.options.map((option) => {
+        const selected = isMulti(props) ? props.values.includes(option.value) : props.value === option.value;
         return (
           <QuietPressable
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => press(option.value)}
             style={{
               minHeight: 42,
               justifyContent: 'center',

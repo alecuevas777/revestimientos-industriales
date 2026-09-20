@@ -56,6 +56,8 @@ create table public.perfiles (
   id uuid primary key references auth.users (id) on delete cascade,
   nombre text not null,
   email text,
+  telefono text,
+  foto_path text,
   rol text not null default 'tecnico'
     check (rol in ('tecnico', 'supervisor', 'admin')),
   activo boolean not null default true,

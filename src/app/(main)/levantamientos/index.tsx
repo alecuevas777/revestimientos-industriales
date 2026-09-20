@@ -13,13 +13,29 @@ import { FilterChips } from '@/components/ui/FilterChips';
 import { Screen } from '@/components/ui/Screen';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { SERVICE_TYPE_LABELS, SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { useAppActions, useAppData } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { indexById } from '@/lib/selectors';
-import type { Survey } from '@/types';
+import { surveyMatchesFindings, surveyMatchesService, type HistoryFinding } from '@/lib/survey';
+import type { ServiceType, Survey } from '@/types';
 
-type Filter = 'all' | 'draft' | 'completed';
+type StatusFilter = 'all' | 'draft' | 'completed';
+type ServiceFilter = 'all' | ServiceType;
+
+const SERVICE_FILTERS: { value: ServiceFilter; label: string }[] = [
+  { value: 'all', label: 'Todos los servicios' },
+  { value: 'epoxy', label: SERVICE_TYPE_SHORT.epoxy },
+  { value: 'pu_cement', label: SERVICE_TYPE_SHORT['pu_cement'] },
+  { value: 'roof_waterproofing', label: SERVICE_TYPE_SHORT.roof_waterproofing },
+  { value: 'corrosion_control', label: SERVICE_TYPE_SHORT.corrosion_control },
+];
+
+const FINDING_FILTERS: { value: HistoryFinding; label: string }[] = [
+  { value: 'bad', label: 'Malo / crítico' },
+  { value: 'high', label: 'Criticidad alta' },
+];
 
 export default function SurveysScreen() {
   const { clients, projects, surveys, refreshing } = useAppData();
@@ -27,10 +43,13 @@ export default function SurveysScreen() {
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const search = useDebouncedValue(query);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [serviceType, setServiceType] = useState<ServiceFilter>('all');
+  const [findings, setFindings] = useState<HistoryFinding[]>([]);
 
   const projectsById = useMemo(() => indexById(projects), [projects]);
   const clientsById = useMemo(() => indexById(clients), [clients]);
+  const extraFiltersOn = serviceType !== 'all' || findings.length > 0;
 
   const drafts = useMemo(
     () =>
@@ -47,27 +66,43 @@ export default function SurveysScreen() {
         if (filter === 'draft' || filter === 'completed') return survey.status === filter;
         return true;
       })
+      .filter((survey) => surveyMatchesService(survey, serviceType))
+      .filter((survey) => surveyMatchesFindings(survey, findings))
       .filter((survey) => {
+        if (!term) return true;
         const project = projectsById.get(survey.projectId);
         const client = project ? clientsById.get(project.clientId) : undefined;
-        return [survey.code, project?.name, client?.name, project?.location, project?.city]
+        return [
+          survey.code,
+          project?.name,
+          client?.name,
+          project?.location,
+          project?.city,
+          SERVICE_TYPE_SHORT[survey.serviceType],
+          SERVICE_TYPE_LABELS[survey.serviceType],
+        ]
           .filter(Boolean)
           .some((value) => value!.toLowerCase().includes(term));
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [clientsById, filter, projectsById, search, surveys]);
+  }, [clientsById, filter, findings, projectsById, search, serviceType, surveys]);
 
-  const showDraftsApart = filter === 'all' && !search && drafts.length > 0;
+  const showDraftsApart = filter === 'all' && !search && !extraFiltersOn && drafts.length > 0;
   const previewDrafts = drafts.slice(0, 2);
   const history = showDraftsApart ? visible.filter((survey) => survey.status !== 'draft') : visible;
-  const emptyCatalog = surveys.length === 0 && !search && filter === 'all';
+  const emptyCatalog = surveys.length === 0 && !search && filter === 'all' && !extraFiltersOn;
   const noResults = history.length === 0 && !showDraftsApart;
+
+  function clearExtraFilters() {
+    setServiceType('all');
+    setFindings([]);
+  }
 
   return (
     <Screen scroll={false} padded={false}>
       <CatalogList
         data={history}
-        extraData={`${filter}:${search}:${session?.name ?? ''}`}
+        extraData={`${filter}:${serviceType}:${findings.join(',')}:${search}:${session?.name ?? ''}`}
         keyExtractor={(survey) => survey.id}
         refreshing={refreshing}
         onRefresh={refreshWorkspace}
@@ -89,6 +124,13 @@ export default function SurveysScreen() {
                   { value: 'completed', label: 'Finalizados' },
                 ]}
               />
+              <FilterChips value={serviceType} onChange={setServiceType} options={SERVICE_FILTERS} />
+              <FilterChips values={findings} onChange={setFindings} options={FINDING_FILTERS} />
+              {extraFiltersOn ? (
+                <Pressable onPress={clearExtraFilters} className="self-start py-1">
+                  <Text className="text-sm font-semibold text-brand">Quitar filtros</Text>
+                </Pressable>
+              ) : null}
               <Button
                 label="Nuevo levantamiento"
                 className="rounded-full"
@@ -117,7 +159,16 @@ export default function SurveysScreen() {
             ) : null}
             {filter === 'all' && history.length > 0 ? (
               <View className="mt-6">
-                <SectionHeader title="Historial" />
+                <SectionHeader
+                  title={extraFiltersOn || search ? 'Resultados' : 'Historial'}
+                  action={
+                    extraFiltersOn || search ? (
+                      <Text className="text-sm font-medium text-muted">
+                        {history.length} {history.length === 1 ? 'registro' : 'registros'}
+                      </Text>
+                    ) : null
+                  }
+                />
               </View>
             ) : null}
             {filter === 'draft' ? (
@@ -142,7 +193,19 @@ export default function SurveysScreen() {
               }
             />
           ) : noResults ? (
-            <EmptyState title="Sin resultados" description="Cambia el filtro o el texto de búsqueda." />
+            <EmptyState
+              title="Sin resultados"
+              description={
+                extraFiltersOn
+                  ? 'Ningún levantamiento coincide con esos filtros.'
+                  : 'Cambia el filtro o el texto de búsqueda.'
+              }
+              action={
+                extraFiltersOn ? (
+                  <Button label="Quitar filtros" variant="secondary" onPress={clearExtraFilters} />
+                ) : null
+              }
+            />
           ) : null
         }
         renderItem={(survey: Survey) => {

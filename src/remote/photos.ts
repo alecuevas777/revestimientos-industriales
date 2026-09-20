@@ -103,3 +103,24 @@ export async function signedUrlFor(path?: string) {
   const urls = await signedUrlsFor([path]);
   return urls.get(path);
 }
+
+export function forgetSignedUrl(path?: string) {
+  if (path) signedCache.delete(path);
+}
+
+export function profilePhotoPath(userId: string) {
+  return `${userId}/perfil/avatar.jpg`;
+}
+
+export async function uploadProfilePhoto(userId: string, uri: string) {
+  const path = profilePhotoPath(userId);
+  const body = await readPhotoBody(uri);
+  const { error } = await supabase.storage.from(BUCKET).upload(path, body, {
+    contentType: 'image/jpeg',
+    upsert: true,
+    cacheControl: '3600',
+  });
+  if (error) throw new RemoteError(remoteMessage(error, 'No se pudo subir la foto de perfil.'), error);
+  forgetSignedUrl(path);
+  return path;
+}

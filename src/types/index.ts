@@ -3,6 +3,8 @@ export type User = {
   name: string;
   email: string;
   role?: string;
+  phone?: string;
+  photoPath?: string;
 };
 
 export type Client = {

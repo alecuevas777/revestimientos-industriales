@@ -15,12 +15,12 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { QuietPressable } from '@/components/ui/QuietPressable';
 import { APP_NAME_FULL, BrandImages } from '@/constants/brand';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthProvider';
-import { initials } from '@/lib/format';
 
 const items: { label: string; route: string; screen?: string; prefixes: string[]; icon: LucideIcon }[] = [
   { label: 'Inicio', route: '(tabs)', screen: 'index', prefixes: ['/'], icon: Home },
@@ -132,9 +132,7 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
           onPress={() => go('perfil')}
           style={{ marginBottom: 28, flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'flex-start' }}
         >
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#E8E8E8]">
-            <Text className="text-[13px] font-semibold text-[#6B7280]">{initials(name)}</Text>
-          </View>
+          <ProfileAvatar name={name} photoPath={session?.photoPath} size={44} />
           <Text numberOfLines={1} className="text-[15px] text-muted">
             {name}
           </Text>

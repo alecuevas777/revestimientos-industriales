@@ -3,13 +3,14 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { CardActions } from '@/components/ui/CardActions';
+import { ConditionBadge, SeverityBadge } from '@/components/ui/StatusBadge';
 import { SERVICE_TYPE_SHORT } from '@/constants/labels';
 import { Colors } from '@/constants/theme';
 import { useAppActions } from '@/context/AppProvider';
 import { useConfirmAction } from '@/hooks/useConfirmAction';
 import { formatRelative } from '@/lib/format';
 import { push } from '@/lib/nav';
-import { elementCount, photoCount } from '@/lib/survey';
+import { elementCount, maxCondition, maxSeverity, photoCount } from '@/lib/survey';
 import type { Survey } from '@/types';
 
 type Props = {
@@ -33,6 +34,10 @@ export function SurveyCard({
   const { ask, modal } = useConfirmAction();
   const photos = photoCount(survey);
   const elements = elementCount(survey);
+  const worstCondition = maxCondition(survey);
+  const highestSeverity = maxSeverity(survey);
+  const showCondition = worstCondition === 'bad' || worstCondition === 'critical';
+  const showSeverity = highestSeverity === 'high' || highestSeverity === 'critical';
   const place = [clientName, location].filter(Boolean).join(' · ');
   const editorHref = `/levantamientos/${survey.id}/editar`;
   const detailHref = `/levantamientos/${survey.id}`;
@@ -81,6 +86,8 @@ export function SurveyCard({
 
         <View className="mt-4 flex-row flex-wrap items-center gap-x-4 gap-y-2">
           <Text className="text-sm font-semibold text-brand">{SERVICE_TYPE_SHORT[survey.serviceType]}</Text>
+          {showCondition && worstCondition ? <ConditionBadge condition={worstCondition} /> : null}
+          {showSeverity && highestSeverity ? <SeverityBadge severity={highestSeverity} /> : null}
           <View className="flex-row items-center gap-1.5">
             <Layers size={14} color={Colors.brand} />
             <Text className="text-sm font-semibold text-brand">

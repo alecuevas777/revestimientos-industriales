@@ -2,12 +2,28 @@ import { WIZARD_STEPS } from '@/constants/labels';
 import { isFloorService, usesElements } from '@/constants/options';
 import { isUuid } from '@/lib/id';
 import { surveyArea } from '@/lib/service';
-import type { PhotoEvidence, PhotoUploadStatus, Severity, Survey, SurveyElement, SurveySector } from '@/types';
+import type {
+  PhotoEvidence,
+  PhotoUploadStatus,
+  ServiceType,
+  Severity,
+  SurfaceCondition,
+  Survey,
+  SurveyElement,
+  SurveySector,
+} from '@/types';
 
 const SEVERITY_RANK: Record<Severity, number> = {
   low: 1,
   medium: 2,
   high: 3,
+  critical: 4,
+};
+
+const CONDITION_RANK: Record<SurfaceCondition, number> = {
+  good: 1,
+  regular: 2,
+  bad: 3,
   critical: 4,
 };
 
@@ -173,6 +189,16 @@ export function maxSeverity(survey: Survey): Severity | undefined {
   return values.reduce((current, item) => (SEVERITY_RANK[item] > SEVERITY_RANK[current] ? item : current));
 }
 
+export function maxCondition(survey: Survey): SurfaceCondition | undefined {
+  const values = [
+    ...(survey.overallCondition ? [survey.overallCondition] : []),
+    ...survey.sectors.map((sector) => sector.condition),
+    ...collectElements(survey).map((element) => element.condition),
+  ];
+  if (values.length === 0) return undefined;
+  return values.reduce((current, item) => (CONDITION_RANK[item] > CONDITION_RANK[current] ? item : current));
+}
+
 export function criticalItemCount(survey: Survey) {
   const sectors = survey.sectors.filter((sector) => sector.severity === 'high' || sector.severity === 'critical').length;
   const elements = collectElements(survey).filter(
@@ -196,6 +222,18 @@ export function hasBadCondition(survey: Survey) {
 export function hasHighSeverity(survey: Survey) {
   const highest = maxSeverity(survey);
   return highest === 'high' || highest === 'critical';
+}
+
+export type HistoryFinding = 'bad' | 'high';
+
+export function surveyMatchesService(survey: Survey, serviceType: ServiceType | 'all') {
+  return serviceType === 'all' || survey.serviceType === serviceType;
+}
+
+export function surveyMatchesFindings(survey: Survey, findings: HistoryFinding[]) {
+  if (findings.includes('bad') && !hasBadCondition(survey)) return false;
+  if (findings.includes('high') && !hasHighSeverity(survey)) return false;
+  return true;
 }
 
 export function surveyProgress(survey: Survey) {

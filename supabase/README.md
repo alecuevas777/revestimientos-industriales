@@ -17,7 +17,7 @@ El diagrama está en `modelo-datos.pdf`.
 
 | Tabla | Qué guarda |
 |---|---|
-| `perfiles` | Ficha del técnico (1:1 con Auth) |
+| `perfiles` | Ficha del técnico (1:1 con Auth). Nombre, email, teléfono y `foto_path`. |
 | `clientes` | Ficha comercial (catálogo del equipo) |
 | `proyectos` | Recintos, ligados a un cliente |
 | `levantamientos` | Inspección del técnico dueño (código LEV-…) |
@@ -34,7 +34,8 @@ La app es **local-first**: guarda en el dispositivo y escribe en Supabase cuando
 - IDs: UUID, iguales en la app y en Postgres.
 - Clientes y proyectos: visibles para el equipo (RLS de catálogo).
 - Levantamientos: solo el técnico dueño.
-- Fotos: `fotos/{userId}/{surveyId}/{photoId}.jpg`.
+- Fotos de evidencia: `fotos/{userId}/{surveyId}/{photoId}.jpg`.
+- Foto de perfil: `fotos/{userId}/perfil/avatar.jpg`.
 - Sin red: el trabajo queda en cache por usuario (`@ri/workspace/{userId}`) y se sube al volver a entrar.
 - Cerrar sesión no borra esa cache.
 

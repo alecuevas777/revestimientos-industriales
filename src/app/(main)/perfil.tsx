@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pencil } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
 
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { SurveyCard } from '@/components/SurveyCard';
 import { Button } from '@/components/ui/Button';
 import { CatalogList } from '@/components/ui/CatalogList';
@@ -10,9 +12,10 @@ import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { WORKER_ROLE } from '@/constants/labels';
+import { Colors } from '@/constants/theme';
 import { useAppActions, useAppData } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
-import { initials } from '@/lib/format';
+import { push } from '@/lib/nav';
 import { indexById, surveysForUser } from '@/lib/selectors';
 import type { Survey } from '@/types';
 
@@ -48,24 +51,39 @@ export default function ProfileScreen() {
     <Screen scroll={false} padded={false}>
       <CatalogList
         data={mine}
-        extraData={worker.name}
+        extraData={`${worker.name}-${worker.phone ?? ''}-${worker.photoPath ?? ''}`}
         keyExtractor={(survey) => survey.id}
         refreshing={refreshing}
         onRefresh={refreshWorkspace}
         header={
           <>
-            <ScreenHeader title="Perfil" subtitle="Ficha del técnico y sus levantamientos" />
+            <ScreenHeader
+              title="Perfil"
+              subtitle="Ficha del técnico y sus levantamientos"
+              right={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Editar perfil"
+                  onPress={() => push('/perfil-editar')}
+                  className="h-11 w-11 items-center justify-center rounded-full border border-line bg-white"
+                >
+                  <Pencil size={18} color={Colors.ink} />
+                </Pressable>
+              }
+            />
             <View className="overflow-hidden rounded-2xl border border-line bg-white">
               <View className="h-1 bg-brand" />
               <View className="flex-row items-center gap-4 px-4 py-4">
-                <View className="h-14 w-14 items-center justify-center rounded-full bg-ink">
-                  <Text className="text-lg font-bold text-white">{initials(worker.name)}</Text>
-                </View>
+                <ProfileAvatar name={worker.name} photoPath={worker.photoPath} size={56} />
                 <View className="min-w-0 flex-1">
                   <Text className="text-xl font-bold text-ink">{worker.name}</Text>
                   <Text className="mt-0.5 text-sm font-medium text-brand">{worker.role ?? WORKER_ROLE}</Text>
                   <Text className="mt-1 text-sm text-muted">{worker.email}</Text>
+                  {worker.phone ? <Text className="mt-0.5 text-sm text-muted">{worker.phone}</Text> : null}
                 </View>
+              </View>
+              <View className="border-t border-line px-4 py-3">
+                <Button label="Editar ficha" variant="ghost" onPress={() => push('/perfil-editar')} />
               </View>
             </View>
             <View className="mt-4 flex-row gap-3">

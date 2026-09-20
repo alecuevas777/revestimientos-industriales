@@ -12,6 +12,7 @@ import {
   signOutAuth,
   signUpWithPassword,
   updatePassword,
+  updateOwnProfile,
   type RegisterResult,
 } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -27,6 +28,12 @@ type AuthContextValue = {
   requestReset: (email: string) => Promise<string | null>;
   resetWithCode: (input: { email: string; token: string; password: string }) => Promise<string | null>;
   completeReset: (password: string) => Promise<string | null>;
+  updateProfile: (input: {
+    name: string;
+    phone?: string;
+    photoUri?: string;
+    removePhoto?: boolean;
+  }) => Promise<string | null>;
   logout: () => Promise<void>;
 };
 
@@ -199,6 +206,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         recoveryRef.current = false;
         setRecoveryPending(false);
         setSession(null);
+        return null;
+      },
+      updateProfile: async (input) => {
+        const result = await updateOwnProfile(input);
+        if (typeof result === 'string') return result;
+        setSession(result);
         return null;
       },
       logout: async () => {

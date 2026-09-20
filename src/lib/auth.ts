@@ -2,7 +2,9 @@ import * as Linking from 'expo-linking';
 import type { User as AuthUser } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
-import { emailError } from '@/lib/validate';
+import { emailError, phoneError } from '@/lib/validate';
+import { deleteStoredPhoto, uploadProfilePhoto } from '@/remote/photos';
+import { compressSurveyPhoto } from '@/services/photoStorage';
 import { clearSession, saveSession } from '@/storage/sessionStorage';
 import { WORKER_ROLE } from '@/constants/labels';
 import type { User } from '@/types';
@@ -15,6 +17,8 @@ type ProfileRow = {
   email: string | null;
   rol: string | null;
   activo?: boolean | null;
+  telefono?: string | null;
+  foto_path?: string | null;
 };
 
 function mapAuthError(message: string) {
@@ -46,6 +50,9 @@ function mapAuthError(message: string) {
   if (text.includes('rate limit') || text.includes('too many requests')) {
     return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
   }
+  if (text.includes('column') && (text.includes('telefono') || text.includes('foto_path'))) {
+    return 'Falta aplicar en Supabase la migración de teléfono y foto de perfil.';
+  }
   if (text.includes('network') || text.includes('fetch')) {
     return 'No se pudo conectar con Supabase. Revisa la red y las claves del .env.';
   }
@@ -59,13 +66,15 @@ function toUser(authUser: AuthUser, data: ProfileRow | null): User {
     name: data?.nombre?.trim() || authUser.email?.split('@')[0] || 'Técnico',
     email: data?.email || authUser.email || '',
     role: rol === 'tecnico' || !rol ? WORKER_ROLE : rol,
+    phone: data?.telefono?.trim() || undefined,
+    photoPath: data?.foto_path?.trim() || undefined,
   };
 }
 
 export async function persistProfile(authUser: AuthUser): Promise<string | User> {
   const { data, error } = await supabase
     .from('perfiles')
-    .select('nombre, email, rol, activo')
+    .select('nombre, email, rol, activo, telefono, foto_path')
     .eq('id', authUser.id)
     .maybeSingle();
 
@@ -265,4 +274,53 @@ export async function updatePassword(password: string): Promise<string | null> {
 
   await signOutAuth();
   return null;
+}
+
+export async function updateOwnProfile(input: {
+  name: string;
+  phone?: string;
+  photoUri?: string;
+  removePhoto?: boolean;
+}): Promise<string | User> {
+  const name = input.name.trim();
+  if (!name) return 'Ingresa tu nombre.';
+  const invalidPhone = phoneError(input.phone);
+  if (invalidPhone) return invalidPhone;
+
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) return 'No hay una sesión activa.';
+
+  const { data: current } = await supabase
+    .from('perfiles')
+    .select('foto_path')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  let fotoPath: string | null = current?.foto_path ?? null;
+
+  try {
+    if (input.removePhoto) {
+      await deleteStoredPhoto(fotoPath ?? undefined);
+      fotoPath = null;
+    } else if (input.photoUri && !input.photoUri.startsWith('http')) {
+      const compressed = await compressSurveyPhoto(input.photoUri);
+      fotoPath = await uploadProfilePhoto(auth.user.id, compressed);
+    }
+  } catch (caught) {
+    return caught instanceof Error ? caught.message : 'No se pudo guardar la foto de perfil.';
+  }
+
+  const { error } = await supabase
+    .from('perfiles')
+    .update({
+      nombre: name,
+      telefono: input.phone?.trim() || null,
+      foto_path: fotoPath,
+    })
+    .eq('id', auth.user.id);
+
+  if (error) return mapAuthError(error.message);
+
+  await supabase.auth.updateUser({ data: { name } });
+  return persistProfile(auth.user);
 }

@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { DraftCard } from '@/components/DraftCard';
+import { DraftReminder } from '@/components/DraftReminder';
 import { ProjectCard } from '@/components/ProjectCard';
 import { StatCard } from '@/components/StatCard';
 import { SurveyCard } from '@/components/SurveyCard';
@@ -105,6 +106,8 @@ export default function DashboardScreen() {
           />
         ))}
       </View>
+
+      <DraftReminder userId={session?.id} ready={ready} drafts={drafts} projects={projects} />
     </Screen>
   );
 }

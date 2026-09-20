@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { DraftCard } from '@/components/DraftCard';
@@ -20,19 +20,31 @@ import { useAuth } from '@/context/AuthProvider';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { indexById } from '@/lib/selectors';
 import { surveyMatchesFindings, surveyMatchesService, type HistoryFinding } from '@/lib/survey';
+import { routeParam } from '@/lib/nav';
 import type { Survey } from '@/types';
 
 type StatusFilter = 'all' | 'draft' | 'completed';
 
+function statusFromParam(value?: string): StatusFilter {
+  if (value === 'borradores' || value === 'draft') return 'draft';
+  if (value === 'finalizados' || value === 'completed') return 'completed';
+  return 'all';
+}
+
 export default function SurveysScreen() {
+  const { estado } = useLocalSearchParams<{ estado?: string }>();
   const { clients, projects, surveys, refreshing } = useAppData();
   const { refreshWorkspace } = useAppActions();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const search = useDebouncedValue(query);
-  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [filter, setFilter] = useState<StatusFilter>(() => statusFromParam(routeParam(estado)));
   const [serviceType, setServiceType] = useState<ServiceFilter>('all');
   const [findings, setFindings] = useState<HistoryFinding[]>([]);
+
+  useEffect(() => {
+    setFilter(statusFromParam(routeParam(estado)));
+  }, [estado]);
 
   const projectsById = useMemo(() => indexById(projects), [projects]);
   const clientsById = useMemo(() => indexById(clients), [clients]);

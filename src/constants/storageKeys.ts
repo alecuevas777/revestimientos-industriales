@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   schema: '@ri/schema',
   rememberEmail: '@ri/remember-email',
   workspace: (userId: string) => `@ri/workspace/${userId}`,
+  draftReminder: (userId: string) => `@ri/draft-reminder/${userId}`,
 } as const;
 
 export const SCHEMA_VERSION = '6';

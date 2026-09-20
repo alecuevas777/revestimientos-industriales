@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { QuietPressable } from '@/components/ui/QuietPressable';
+import { FieldLabel } from '@/components/ui/FieldLabel';
 import { Colors } from '@/constants/theme';
 
 export type ChoiceOption<T extends string> = {
@@ -13,6 +14,7 @@ type Common<T extends string> = {
   options: ChoiceOption<T>[];
   label?: string;
   hint?: string;
+  required?: boolean;
 };
 
 type SingleProps<T extends string> = Common<T> & {
@@ -27,15 +29,7 @@ type MultiProps<T extends string> = Common<T> & {
   onChange: (values: T[]) => void;
 };
 
-export function FieldLabel({ label, hint }: { label?: string; hint?: string }) {
-  if (!label && !hint) return null;
-  return (
-    <View style={styles.labelBox}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
-    </View>
-  );
-}
+export { FieldLabel } from '@/components/ui/FieldLabel';
 
 function ChoiceChipsInner<T extends string>(props: SingleProps<T> | MultiProps<T>) {
   const multi = Boolean(props.values);
@@ -61,7 +55,7 @@ function ChoiceChipsInner<T extends string>(props: SingleProps<T> | MultiProps<T
 
   return (
     <View style={styles.wrap}>
-      <FieldLabel label={props.label} hint={props.hint} />
+      <FieldLabel label={props.label} hint={props.hint} required={props.required} />
       <View style={styles.row}>
         {props.options.map((option) => {
           const active = multi ? picked.includes(option.value) : pickedKey === option.value;
@@ -84,9 +78,6 @@ export const ChoiceChips = memo(ChoiceChipsInner) as typeof ChoiceChipsInner;
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  labelBox: { gap: 4 },
-  label: { fontSize: 14, fontWeight: '600', color: Colors.ink },
-  hint: { fontSize: 14, lineHeight: 20, color: Colors.muted },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     minHeight: 44,

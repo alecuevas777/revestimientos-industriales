@@ -27,7 +27,7 @@ export function ClientProjectReportFields({ client, project, errors, onChangeCli
       <View className="gap-4">
         <Text className="text-base font-semibold text-ink">Datos del cliente para el informe</Text>
         <Text className="text-sm leading-5 text-muted">
-          No son obligatorios para empezar, pero salen en el PDF. Conviene completarlos ahora.
+          No son obligatorios para empezar, pero salen en el PDF. Conviene completarlos ahora o más adelante.
         </Text>
         <Input
           label="RUT"

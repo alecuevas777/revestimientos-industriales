@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { ClientProjectReportFields, type ReportClientFields, type ReportProjectFields } from '@/components/forms/ClientProjectReportFields';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { contactFieldErrors, hasFieldErrors } from '@/lib/validate';
+import { contactFieldErrors, hasFieldErrors, requiredText } from '@/lib/validate';
 import type { ClientProjectSetup } from '@/types';
 
 type Props = {
@@ -28,8 +28,8 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
 
   function handleSubmit() {
     const nextErrors = {
-      client: clientName.trim() ? undefined : 'Ingresa el nombre del cliente.',
-      project: projectName.trim() ? undefined : 'Ingresa el nombre del proyecto.',
+      client: requiredText(clientName, 'Ingresa el nombre del cliente.'),
+      project: requiredText(projectName, 'Ingresa el nombre del proyecto.'),
       ...contactFieldErrors({
         rut: client.rut,
         phone: client.phone,
@@ -67,12 +67,14 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
   return (
     <View className="gap-5">
       <Text className="text-sm leading-5 text-muted">
-        El cliente es la empresa. El proyecto es la planta o recinto. Estos datos se usan después en el informe PDF.
+        Para empezar basta el cliente, el proyecto y el servicio. El resto se puede completar después para el informe
+        PDF.
       </Text>
       <View className="gap-4">
         <Text className="text-base font-semibold text-ink">Cliente</Text>
         <Input
           label="Nombre del cliente"
+          required
           hint="Empresa o razón social. Distinto al nombre del proyecto."
           value={clientName}
           onChangeText={(value) => {
@@ -88,6 +90,7 @@ export function ClientProjectQuickForm({ submitting, onSubmit }: Props) {
         <Text className="text-base font-semibold text-ink">Proyecto</Text>
         <Input
           label="Nombre del proyecto"
+          required
           hint="Planta, bodega o recinto. Distinto al nombre del cliente."
           value={projectName}
           onChangeText={(value) => {

@@ -58,7 +58,7 @@ export function ServiceConditionsStep({ survey, errors, onChange }: Props) {
       ) : null}
 
       <View className="gap-2">
-        <FieldLabel label="Alcance" />
+        <FieldLabel label="Alcance" required />
         {SCOPES.map((item) => (
           <SelectableCard
             key={item}
@@ -71,7 +71,7 @@ export function ServiceConditionsStep({ survey, errors, onChange }: Props) {
       </View>
 
       <View className="gap-2">
-        <FieldLabel label="Estado general" hint="Condición actual observada, no la urgencia." />
+        <FieldLabel label="Estado general" required hint="Condición actual observada, no la urgencia." />
         {CONDITIONS.map((item) => (
           <SelectableCard
             key={item}
@@ -115,6 +115,7 @@ function FloorFields({
       {data.surfaceKind === 'other' ? (
         <Input
           label="Describe la superficie"
+          required
           value={data.otherSurfaceKind ?? ''}
           onChangeText={(otherSurfaceKind) => onPatch({ otherSurfaceKind })}
           placeholder="Ej. canaleta de proceso"
@@ -128,6 +129,7 @@ function FloorFields({
       />
       <Input
         label="Superficie total aproximada (m²)"
+        required
         hint="Del piso o recinto que se inspecciona en esta visita. No es el área de cada sector."
         value={data.totalArea ? String(data.totalArea) : ''}
         onChangeText={(value) => {
@@ -212,12 +214,14 @@ function RoofFields({
     <View className="gap-5">
       <ChoiceChips
         label="Tipo de cubierta"
+        required
         options={ROOF_KIND_OPTIONS}
         value={data.roofKind}
         onChange={(roofKind) => onPatch({ roofKind })}
       />
       <Input
         label="Superficie total aproximada (m²)"
+        required
         hint="De la cubierta que se inspecciona en esta visita. El desglose por zona va en cada sector."
         value={data.totalArea ? String(data.totalArea) : ''}
         onChangeText={(value) => {

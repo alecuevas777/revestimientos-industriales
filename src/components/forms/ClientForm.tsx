@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/TextArea';
-import { emailError, phoneError, rutError } from '@/lib/validate';
+import { emailError, phoneError, requiredText, rutError } from '@/lib/validate';
 import type { Client, ClientDraft } from '@/types';
 
 type Props = {
@@ -35,14 +35,14 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
 
   function handleSubmit() {
     const nextErrors = {
-      name: name.trim() ? undefined : 'Ingresa el nombre del cliente.',
+      name: requiredText(name, 'Ingresa el nombre del cliente.'),
       rut: rutError(rut),
       phone: phoneError(phone),
       email: emailError(email),
-      project: includeFirstProject && !projectName.trim() ? 'Ingresa el nombre del proyecto. Es distinto al del cliente.' : undefined,
+      project: includeFirstProject ? requiredText(projectName, 'Ingresa el nombre del proyecto. Es distinto al del cliente.') : undefined,
     };
     setErrors(nextErrors);
-    if (nextErrors.name || nextErrors.rut || nextErrors.phone || nextErrors.email || nextErrors.project) return;
+    if (Object.values(nextErrors).some(Boolean)) return;
 
     onSubmit(
       {
@@ -67,6 +67,7 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
       </Text>
       <Input
         label="Nombre del cliente"
+        required
         hint="Empresa o razón social. No uses el nombre de la planta o del proyecto."
         value={name}
         onChangeText={(value) => {
@@ -77,7 +78,7 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
         placeholder="Industrias del Pacífico"
       />
       <Input
-        label="RUT (opcional)"
+        label="RUT"
         value={rut}
         onChangeText={(value) => {
           setRut(value);
@@ -93,7 +94,7 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
         onChangeText={setContactName}
         placeholder="María Soto"
       />
-      <Input label="Cargo del contacto (opcional)" value={contactRole} onChangeText={setContactRole} placeholder="Jefa de mantención" />
+      <Input label="Cargo del contacto" value={contactRole} onChangeText={setContactRole} placeholder="Jefa de mantención" />
       <Input
         label="Teléfono"
         value={phone}
@@ -134,6 +135,7 @@ export function ClientForm({ initial, submitting, includeFirstProject, onSubmit 
           </Text>
           <Input
             label="Nombre del proyecto"
+            required
             hint="Ejemplo: Planta Coronel. Debe ser distinto al nombre del cliente."
             value={projectName}
             onChangeText={(value) => {

@@ -71,6 +71,7 @@ export default function ElementEditorScreen() {
       <View className="gap-6 pb-8">
         <ChoiceChips
           label={corrosion ? 'Tipo de elemento' : 'Elemento asociado'}
+          required={corrosion}
           options={elementsForService(survey.serviceType)}
           value={element.elementType}
           onChange={(elementType) => patch({ elementType })}

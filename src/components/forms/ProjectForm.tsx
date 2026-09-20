@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { FieldLabel } from '@/components/ui/FieldLabel';
 import { Input } from '@/components/ui/Input';
 import { SelectableCard } from '@/components/ui/SelectableCard';
 import { TextArea } from '@/components/ui/TextArea';
 import { PROJECT_STATUS_LABELS } from '@/constants/labels';
-import { phoneError } from '@/lib/validate';
+import { phoneError, requiredText } from '@/lib/validate';
 import type { Client, Project, ProjectDraft, ProjectStatus } from '@/types';
 
 const STATUSES: ProjectStatus[] = ['active', 'pending', 'finished'];
@@ -35,12 +36,12 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
 
   function handleSubmit() {
     const nextErrors = {
-      name: name.trim() ? undefined : 'Ingresa el nombre del proyecto.',
+      name: requiredText(name, 'Ingresa el nombre del proyecto.'),
       clientId: clientId ? undefined : 'Selecciona un cliente.',
       siteContactPhone: phoneError(siteContactPhone),
     };
     setErrors(nextErrors);
-    if (nextErrors.name || nextErrors.clientId || nextErrors.siteContactPhone) return;
+    if (Object.values(nextErrors).some(Boolean)) return;
 
     const cityValue = city.trim();
     onSubmit({
@@ -62,6 +63,7 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
     <View className="gap-4 pb-8">
       <Input
         label="Nombre del proyecto"
+        required
         hint="Planta o recinto. Distinto al nombre del cliente."
         value={name}
         onChangeText={(value) => {
@@ -73,8 +75,7 @@ export function ProjectForm({ clients, initial, lockedClientId, submitting, onSu
       />
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-ink">Cliente</Text>
-        <Text className="text-sm leading-5 text-muted">La empresa dueña de este proyecto.</Text>
+        <FieldLabel label="Cliente" required hint="La empresa dueña de este proyecto." />
         {errors.clientId ? <Text className="text-sm text-danger">{errors.clientId}</Text> : null}
         <View className="gap-2">
           {clients.filter((client) => !client.archived || client.id === clientId).map((client) => (

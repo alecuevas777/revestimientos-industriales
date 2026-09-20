@@ -89,6 +89,7 @@ export default function EditProfileScreen() {
       <View className="mt-6 gap-4">
         <Input
           label="Nombre"
+          required
           value={name}
           onChangeText={(value) => {
             setName(value);

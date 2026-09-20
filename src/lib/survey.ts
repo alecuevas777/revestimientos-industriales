@@ -1,5 +1,5 @@
 import { WIZARD_STEPS } from '@/constants/labels';
-import { isFloorService, usesElements } from '@/constants/options';
+import { usesElements } from '@/constants/options';
 import { isUuid } from '@/lib/id';
 import { surveyArea } from '@/lib/service';
 import type {
@@ -251,9 +251,12 @@ export function validateConditionFields(survey: Survey) {
   const errors: string[] = [];
   if (!survey.scope) errors.push('Selecciona el alcance de la inspección.');
   if (!survey.overallCondition) errors.push('Selecciona el estado general.');
-  if (isFloorService(survey.serviceType) && survey.serviceData.type !== 'corrosion_control') {
+  if (survey.serviceData.type === 'epoxy' || survey.serviceData.type === 'pu_cement') {
     if (!survey.serviceData.totalArea || survey.serviceData.totalArea <= 0) {
       errors.push('Ingresa la superficie total aproximada en m².');
+    }
+    if (survey.serviceData.surfaceKind === 'other' && !survey.serviceData.otherSurfaceKind?.trim()) {
+      errors.push('Describe la superficie.');
     }
   }
   if (survey.serviceData.type === 'roof_waterproofing') {

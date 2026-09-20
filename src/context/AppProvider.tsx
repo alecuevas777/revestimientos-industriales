@@ -11,7 +11,8 @@ import {
   shouldSkipForegroundHydrate,
   shouldSkipHydrate,
 } from '@/lib/hydrateGate';
-import { applyPersistedSurvey, cloneSectorFields, collectPhotos, mergeRemotePhotoPaths, nextSurveyCode, patchSurveyPhoto, removedSurveyChildren } from '@/lib/survey';
+import { fetchOnline, subscribeConnection } from '@/lib/connection';
+import { applyPersistedSurvey, cloneSectorFields, collectPhotos, mergeRemotePhotoPaths, needsPhotoUpload, nextSurveyCode, patchSurveyPhoto, removedSurveyChildren } from '@/lib/survey';
 import { clearRemovedChildren, noteRemovedChildren, peekRemovedChildren } from '@/lib/surveyDeletes';
 import { emptyServiceData } from '@/lib/service';
 import {
@@ -30,7 +31,9 @@ import {
   cancelPhotoUpload,
   enqueuePendingPhotos,
   enqueuePhotoUpload,
+  hasPendingPhotoUploads,
   resetPhotoUploadQueue,
+  waitForPhotoUploadsIdle,
 } from '@/services/photoUploadQueue';
 import { emptyElement, emptySector } from '@/storage';
 import type {
@@ -46,6 +49,9 @@ import type {
   SurveySector,
 } from '@/types';
 
+export type ConnectionNotice = 'offline' | 'syncing' | 'synced' | null;
+type HydrateMode = 'splash' | 'silent' | 'pull' | 'reconnect';
+
 type AppDataValue = {
   ready: boolean;
   refreshing: boolean;
@@ -53,6 +59,7 @@ type AppDataValue = {
   projects: Project[];
   surveys: Survey[];
   toast: string | null;
+  connectionNotice: ConnectionNotice;
 };
 
 type AppActionsValue = {
@@ -136,6 +143,12 @@ function savedToast(synced: boolean, online = 'Guardado') {
   return synced ? online : 'Guardado en este dispositivo';
 }
 
+function hasPendingLocalWork(surveys: Survey[], pendingSurveyIds: Set<string>) {
+  if (pendingSurveyIds.size > 0) return true;
+  if (hasPendingPhotoUploads()) return true;
+  return surveys.some((survey) => collectPhotos(survey).some(needsPhotoUpload));
+}
+
 function buildClient(draft: ClientDraft): Client {
   const now = new Date().toISOString();
   return {
@@ -166,20 +179,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(() => remembered?.projects ?? []);
   const [surveys, setSurveys] = useState<Survey[]>(() => remembered?.surveys ?? []);
   const [toast, setToast] = useState<string | null>(null);
+  const [connectionNotice, setConnectionNotice] = useState<ConnectionNotice>(null);
   const surveysRef = useRef<Survey[]>([]);
   const clientsRef = useRef<Client[]>([]);
   const projectsRef = useRef<Project[]>([]);
   const sessionRef = useRef(session);
   const hydratingRef = useRef(false);
   const pendingHydrateRef = useRef(false);
+  const reconnectPendingRef = useRef(false);
   const persistTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const persistChains = useRef(new Map<string, Promise<void>>());
   const pendingRemote = useRef(new Set<string>());
   const cancelledSurveys = useRef(new Set<string>());
-  const hydrateRef = useRef<(userId: string, mode: 'splash' | 'silent' | 'pull') => Promise<void>>(async () => {});
+  const hydrateRef = useRef<(userId: string, mode: HydrateMode) => Promise<void>>(async () => {});
   const flushAllRef = useRef<() => Promise<void>>(async () => {});
+  const reconnectRef = useRef<() => Promise<void>>(async () => {});
   const actionsRef = useRef<AppActionsValue>(null!);
   const readyRef = useRef(ready);
+  const onlineRef = useRef(true);
+  const unsyncedRef = useRef(false);
+  const reconnectingRef = useRef(false);
+  const reconnectFailedRef = useRef(false);
+  const syncedNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   surveysRef.current = surveys;
   clientsRef.current = clients;
   projectsRef.current = projects;
@@ -193,6 +214,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingRemote.current.clear();
       resetPhotoUploadQueue();
       forgetWorkspace();
+      unsyncedRef.current = false;
+      reconnectingRef.current = false;
       setClients([]);
       setProjects([]);
       setSurveys([]);
@@ -219,9 +242,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [session?.id]);
 
+  useEffect(() => {
+    let mounted = true;
+    void fetchOnline().then((value) => {
+      if (!mounted) return;
+      onlineRef.current = value;
+      if (!value) setConnectionNotice('offline');
+    });
+
+    const unsubscribe = subscribeConnection((value) => {
+      const wasOnline = onlineRef.current;
+      onlineRef.current = value;
+      if (!value) {
+        reconnectingRef.current = false;
+        setConnectionNotice('offline');
+        return;
+      }
+      if (wasOnline) return;
+      void reconnectRef.current();
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+      if (syncedNoticeTimer.current) clearTimeout(syncedNoticeTimer.current);
+    };
+  }, []);
+
   function showToast(message: string) {
     setToast(message);
     setTimeout(() => setToast(null), 2200);
+  }
+
+  function noteUnsynced() {
+    unsyncedRef.current = true;
+  }
+
+  function noteSyncResult(synced: boolean) {
+    if (!synced) noteUnsynced();
+  }
+
+  function noteWrite() {
+    if (!onlineRef.current) noteUnsynced();
+  }
+
+  async function saveClient(userId: string, client: Client) {
+    noteWrite();
+    const result = await persistClient(userId, client);
+    noteSyncResult(result.synced);
+    return result;
+  }
+
+  async function saveProject(userId: string, project: Project) {
+    noteWrite();
+    const result = await persistProject(userId, project);
+    noteSyncResult(result.synced);
+    return result;
   }
 
   function requireUserId() {
@@ -256,6 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!current) return;
     const next = patchSurveyPhoto(current, photoId, patch);
     replaceSurvey(next);
+    if (patch.uploadStatus === 'error' || patch.uploadStatus === 'pending') noteUnsynced();
     const userId = sessionRef.current?.id;
     if (userId) void persistSurvey(userId, surveysRef.current.find((item) => item.id === surveyId) ?? next, { remote: false });
   }
@@ -299,6 +376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       applyPersisted(result.value);
       const uploaded = surveysRef.current.find((item) => item.id === surveyId);
       if (uploaded) enqueuePendingPhotos([uploaded]);
+      noteSyncResult(result.synced);
       if (!silent) showToast(savedToast(result.synced));
     });
     persistChains.current.set(surveyId, next);
@@ -312,10 +390,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   flushAllRef.current = flushAllSurveys;
+  reconnectRef.current = async () => {
+    if (reconnectingRef.current) return;
+    const userId = sessionRef.current?.id;
+    const hadWork = unsyncedRef.current || hasPendingLocalWork(surveysRef.current, pendingRemote.current);
+
+    if (!userId) {
+      setConnectionNotice(null);
+      return;
+    }
+
+    if (!hadWork) {
+      setConnectionNotice(null);
+      void hydrateRef.current(userId, 'silent');
+      return;
+    }
+
+    reconnectingRef.current = true;
+    reconnectFailedRef.current = false;
+    setConnectionNotice('syncing');
+    try {
+      const started = Date.now();
+      while ((hydratingRef.current || shouldSkipHydrate()) && Date.now() - started < 8000) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      await hydrateRef.current(userId, 'reconnect');
+      await waitForPhotoUploadsIdle();
+      if (!onlineRef.current || reconnectFailedRef.current) {
+        setConnectionNotice('offline');
+        return;
+      }
+      unsyncedRef.current = false;
+      setConnectionNotice('synced');
+      if (syncedNoticeTimer.current) clearTimeout(syncedNoticeTimer.current);
+      syncedNoticeTimer.current = setTimeout(() => {
+        setConnectionNotice((current) => (current === 'synced' ? null : current));
+        syncedNoticeTimer.current = null;
+      }, 2800);
+    } finally {
+      reconnectingRef.current = false;
+    }
+  };
   hydrateRef.current = async (userId, mode) => {
     if (mode === 'silent' && shouldSkipForegroundHydrate()) return;
     if (hydratingRef.current) {
       pendingHydrateRef.current = true;
+      if (mode === 'reconnect') reconnectPendingRef.current = true;
       return;
     }
     hydratingRef.current = true;
@@ -337,9 +457,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       markHydrated();
       enqueuePendingPhotos(result.snapshot.surveys);
-      if (result.fromCacheOnly && (mode === 'splash' || mode === 'pull')) {
-        setToast(result.error ?? 'Sin conexión. Mostrando datos de este dispositivo.');
-        setTimeout(() => setToast(null), 2800);
+      if (result.fromCacheOnly && mode === 'reconnect') {
+        reconnectFailedRef.current = true;
       }
     } finally {
       hydratingRef.current = false;
@@ -347,13 +466,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sessionRef.current?.id === userId) setReady(true);
       if (pendingHydrateRef.current && sessionRef.current?.id === userId && !shouldSkipHydrate()) {
         pendingHydrateRef.current = false;
-        void hydrateRef.current(userId, 'silent');
+        const nextMode: HydrateMode = reconnectPendingRef.current ? 'reconnect' : 'silent';
+        reconnectPendingRef.current = false;
+        void hydrateRef.current(userId, nextMode);
       }
     }
   };
 
   async function commitSurvey(survey: Survey, options?: { silent?: boolean; flush?: boolean }) {
     const userId = requireUserId();
+    noteWrite();
     const silent = options?.silent ?? false;
     const flush = options?.flush ?? true;
     const stamped = { ...survey, updatedAt: new Date().toISOString() };
@@ -404,7 +526,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addClient: async (draft) => {
         const userId = requireUserId();
         const client = buildClient(draft);
-        const result = await persistClient(userId, client);
+        const result = await saveClient(userId, client);
         setClients((current) => [result.value, ...current]);
         showToast(savedToast(result.synced, 'Cliente guardado'));
         return result.value;
@@ -414,7 +536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const current = clientsRef.current.find((item) => item.id === id);
         if (!current) return null;
         const client: Client = { ...current, ...draft, updatedAt: new Date().toISOString() };
-        const result = await persistClient(userId, client);
+        const result = await saveClient(userId, client);
         setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(savedToast(result.synced, 'Cambios guardados'));
         return result.value;
@@ -429,7 +551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           archivedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        const result = await persistClient(userId, client);
+        const result = await saveClient(userId, client);
         setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(result.synced ? 'Cliente archivado' : 'Cliente archivado en este dispositivo');
       },
@@ -443,7 +565,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           archivedAt: undefined,
           updatedAt: new Date().toISOString(),
         };
-        const result = await persistClient(userId, client);
+        const result = await saveClient(userId, client);
         setClients((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(result.synced ? 'Cliente restaurado' : 'Cliente restaurado en este dispositivo');
       },
@@ -457,6 +579,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await dropSurveyState(survey.id);
         }
         const result = await removeClientRecord(userId, id);
+        noteSyncResult(result.synced);
+        if (!result.synced) noteWrite();
         setSurveys((list) => list.filter((survey) => !projectIds.has(survey.projectId)));
         setProjects((list) => list.filter((project) => project.clientId !== id));
         setClients((list) => list.filter((client) => client.id !== id));
@@ -465,7 +589,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addProject: async (draft) => {
         const userId = requireUserId();
         const project = buildProject(draft);
-        const result = await persistProject(userId, project);
+        const result = await saveProject(userId, project);
         setProjects((current) => [result.value, ...current]);
         showToast(savedToast(result.synced, 'Proyecto guardado'));
         return result.value;
@@ -475,7 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const current = projectsRef.current.find((item) => item.id === id);
         if (!current) return null;
         const project: Project = { ...current, ...draft, updatedAt: new Date().toISOString() };
-        const result = await persistProject(userId, project);
+        const result = await saveProject(userId, project);
         setProjects((list) => list.map((item) => (item.id === id ? result.value : item)));
         showToast(savedToast(result.synced, 'Cambios guardados'));
         return result.value;
@@ -487,6 +611,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await dropSurveyState(survey.id);
         }
         const result = await removeProjectRecord(userId, id);
+        noteSyncResult(result.synced);
         setSurveys((list) => list.filter((survey) => survey.projectId !== id));
         setProjects((list) => list.filter((project) => project.id !== id));
         showToast(result.synced ? 'Proyecto eliminado' : 'Proyecto eliminado en este dispositivo');
@@ -495,14 +620,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userId = requireUserId();
         let client = setup.clientId ? clientsRef.current.find((item) => item.id === setup.clientId) : undefined;
         if (!client && setup.client) {
-          const created = await persistClient(userId, buildClient(setup.client));
+          const created = await saveClient(userId, buildClient(setup.client));
           client = created.value;
           setClients((current) => [client!, ...current]);
         }
         if (!client) {
           throw new Error('Falta el cliente para crear el proyecto.');
         }
-        const createdProject = await persistProject(userId, buildProject({ ...setup.project, clientId: client.id }));
+        const createdProject = await saveProject(userId, buildProject({ ...setup.project, clientId: client.id }));
         setProjects((current) => [createdProject.value, ...current]);
         showToast(savedToast(createdProject.synced, setup.clientId ? 'Proyecto listo para el levantamiento' : 'Cliente y proyecto listos'));
         return { client, project: createdProject.value };
@@ -531,6 +656,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       completeSurvey: async (id) => {
         const userId = requireUserId();
+        noteWrite();
         const current = surveysRef.current.find((item) => item.id === id);
         if (!current) return null;
         const now = new Date().toISOString();
@@ -564,7 +690,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       discardSurvey: async (id) => {
         const userId = requireUserId();
         await dropSurveyState(id);
-        await removeSurvey(userId, id);
+        const result = await removeSurvey(userId, id);
+        noteSyncResult(result.synced);
         setSurveys((current) => current.filter((item) => item.id !== id));
         showToast('Levantamiento eliminado');
       },
@@ -778,8 +905,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   actionsRef.current = actions;
 
   const dataValue = useMemo<AppDataValue>(
-    () => ({ ready, refreshing, clients, projects, surveys, toast }),
-    [ready, refreshing, clients, projects, surveys, toast],
+    () => ({ ready, refreshing, clients, projects, surveys, toast, connectionNotice }),
+    [ready, refreshing, clients, projects, surveys, toast, connectionNotice],
   );
 
   const stableActions = useMemo(() => {

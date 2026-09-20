@@ -8,6 +8,7 @@ import type { ReportClientFields, ReportProjectFields } from '@/components/forms
 import { ReportGapsBanner } from '@/components/forms/ReportGapsBanner';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Button } from '@/components/ui/Button';
+import { FieldLabel } from '@/components/ui/FieldLabel';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -141,7 +142,7 @@ export default function NewSurveyScreen() {
 
         {origin === 'existing' && visibleProjects.length > 0 ? (
           <View className="gap-3">
-            <Text className="text-sm font-semibold text-ink">Proyecto</Text>
+            <FieldLabel label="Proyecto" required />
             {visibleProjects.map((item) => (
               <SelectableCard
                 key={item.id}
@@ -213,7 +214,7 @@ export default function NewSurveyScreen() {
 
         {projectId ? (
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink">¿Qué servicio se está levantando?</Text>
+            <FieldLabel label="¿Qué servicio se está levantando?" required />
             {SERVICES.map((item) => (
               <SelectableCard
                 key={item}

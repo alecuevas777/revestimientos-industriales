@@ -57,6 +57,10 @@ export type ContactFieldErrors = {
   siteContactPhone?: string;
 };
 
+export function requiredText(value: string | undefined, message: string) {
+  return value?.trim() ? undefined : message;
+}
+
 export function contactFieldErrors(input: {
   rut?: string;
   phone?: string;

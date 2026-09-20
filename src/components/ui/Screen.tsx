@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ConnectionBanner } from '@/components/ConnectionBanner';
 import { Colors } from '@/constants/theme';
 import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 
@@ -44,6 +45,7 @@ export function Screen({
       className="flex-1 bg-canvas"
       edges={bottomSafe ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}
     >
+      <ConnectionBanner />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={keyboardAvoidingBehavior}

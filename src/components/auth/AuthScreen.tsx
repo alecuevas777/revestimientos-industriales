@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ConnectionBanner } from '@/components/ConnectionBanner';
 import { APP_FOOTER, APP_NAME_FULL, APP_TAGLINE, BrandImages } from '@/constants/brand';
 import { keyboardAvoidingBehavior } from '@/lib/keyboard';
 
@@ -40,6 +41,7 @@ export function AuthScreen({
       <View className="absolute inset-0 bg-black/55" />
 
       <SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']}>
+        <ConnectionBanner className="px-6 pt-2" />
         <KeyboardAvoidingView
           className="flex-1"
           behavior={keyboardAvoidingBehavior}

@@ -71,6 +71,7 @@ export default function SectorEditorScreen() {
       <View className="gap-6 pb-8">
         <Input
           label="Nombre del sector"
+          required
           value={sector.name}
           onChangeText={(name) => {
             setNameError('');

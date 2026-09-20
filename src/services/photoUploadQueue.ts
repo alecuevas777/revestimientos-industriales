@@ -82,6 +82,39 @@ export function enqueuePendingPhotos(surveys: Survey[]) {
   }
 }
 
+export function hasPendingPhotoUploads() {
+  if (draining || pending.length > 0) return true;
+  for (const info of statuses.values()) {
+    if (info.status === 'uploading') return true;
+  }
+  return false;
+}
+
+export function waitForPhotoUploadsIdle(timeoutMs = 15000) {
+  return new Promise<void>((resolve) => {
+    if (!hasPendingPhotoUploads()) {
+      resolve();
+      return;
+    }
+
+    let settled = false;
+    const started = Date.now();
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      unsub();
+      clearInterval(timer);
+      resolve();
+    };
+    const unsub = subscribePhotoUploads(() => {
+      if (!hasPendingPhotoUploads()) finish();
+    });
+    const timer = setInterval(() => {
+      if (!hasPendingPhotoUploads() || Date.now() - started >= timeoutMs) finish();
+    }, 250);
+  });
+}
+
 async function drain() {
   if (draining) return;
   draining = true;

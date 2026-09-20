@@ -41,7 +41,12 @@ export function FilterChips<T extends string>(props: SingleProps<T> | MultiProps
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerClassName="gap-2 pr-1"
+      style={{ overflow: 'hidden' }}
+    >
       {props.options.map((option) => {
         const selected = isMulti(props) ? props.values.includes(option.value) : props.value === option.value;
         return (

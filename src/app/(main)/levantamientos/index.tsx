@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { DraftCard } from '@/components/DraftCard';
+import { HistoryFilters, type ServiceFilter } from '@/components/HistoryFilters';
 import { SurveyCard } from '@/components/SurveyCard';
 import { TabBrandHeader } from '@/components/TabBrandHeader';
 import { Button } from '@/components/ui/Button';
@@ -19,23 +20,9 @@ import { useAuth } from '@/context/AuthProvider';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { indexById } from '@/lib/selectors';
 import { surveyMatchesFindings, surveyMatchesService, type HistoryFinding } from '@/lib/survey';
-import type { ServiceType, Survey } from '@/types';
+import type { Survey } from '@/types';
 
 type StatusFilter = 'all' | 'draft' | 'completed';
-type ServiceFilter = 'all' | ServiceType;
-
-const SERVICE_FILTERS: { value: ServiceFilter; label: string }[] = [
-  { value: 'all', label: 'Todos los servicios' },
-  { value: 'epoxy', label: SERVICE_TYPE_SHORT.epoxy },
-  { value: 'pu_cement', label: SERVICE_TYPE_SHORT['pu_cement'] },
-  { value: 'roof_waterproofing', label: SERVICE_TYPE_SHORT.roof_waterproofing },
-  { value: 'corrosion_control', label: SERVICE_TYPE_SHORT.corrosion_control },
-];
-
-const FINDING_FILTERS: { value: HistoryFinding; label: string }[] = [
-  { value: 'bad', label: 'Malo / crítico' },
-  { value: 'high', label: 'Criticidad alta' },
-];
 
 export default function SurveysScreen() {
   const { clients, projects, surveys, refreshing } = useAppData();
@@ -110,11 +97,22 @@ export default function SurveysScreen() {
           <>
             <TabBrandHeader title="Levantamientos" subtitle="Continúa borradores y revisa su avance" />
             <View className="gap-3">
-              <SearchInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Buscar por código, proyecto, cliente o ubicación"
-              />
+              <View className="flex-row items-center gap-3">
+                <View className="min-w-0 flex-1">
+                  <SearchInput
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Buscar por código, proyecto, cliente o ubicación"
+                  />
+                </View>
+                <HistoryFilters
+                  serviceType={serviceType}
+                  findings={findings}
+                  onServiceType={setServiceType}
+                  onFindings={setFindings}
+                  onClear={clearExtraFilters}
+                />
+              </View>
               <FilterChips
                 value={filter}
                 onChange={setFilter}
@@ -124,13 +122,6 @@ export default function SurveysScreen() {
                   { value: 'completed', label: 'Finalizados' },
                 ]}
               />
-              <FilterChips value={serviceType} onChange={setServiceType} options={SERVICE_FILTERS} />
-              <FilterChips values={findings} onChange={setFindings} options={FINDING_FILTERS} />
-              {extraFiltersOn ? (
-                <Pressable onPress={clearExtraFilters} className="self-start py-1">
-                  <Text className="text-sm font-semibold text-brand">Quitar filtros</Text>
-                </Pressable>
-              ) : null}
               <Button
                 label="Nuevo levantamiento"
                 className="rounded-full"

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VICAST · Manual de uso para técnicos</title>
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --muted: #5a5a5a;
+      --line: #dcdcdc;
+      --paper: #f3f2ee;
+      --white: #fff;
+      --brand: #e85d04;
+      --brand-soft: #f8efe8;
+      --ok: #1f6b45;
+      --ok-bg: #eef6f1;
+      --warn: #8a5a00;
+      --warn-bg: #f8f1e4;
+      --info: #1f3a5f;
+      --info-bg: #eef2f6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Cambria, "Times New Roman", Georgia, serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+    }
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      background: var(--white);
+      box-shadow: 0 0 0 1px #e4e2dc, 0 18px 50px rgba(20, 20, 20, 0.08);
+    }
+    .cover {
+      background: var(--white);
+      color: var(--ink);
+      padding: 0;
+      position: relative;
+      border-bottom: 1px solid var(--line);
+    }
+    .cover-bar {
+      height: 6px;
+      background: var(--brand);
+    }
+    .cover-inner {
+      padding: 36px 48px 32px;
+    }
+    .cover-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      height: 42px;
+      width: auto;
+    }
+    .doc-id {
+      text-align: right;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .doc-id strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+    }
+    .cover h1 {
+      margin: 28px 0 10px;
+      font-size: 34px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+    .cover .lead {
+      margin: 0 0 28px;
+      max-width: 36em;
+      font-size: 16px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--line);
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    }
+    .meta div {
+      padding: 14px 0 0;
+      margin-right: 20px;
+    }
+    .meta span {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .meta b {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .body {
+      padding: 36px 48px 56px;
+      font-size: 15px;
+    }
+    .sans { font-family: "Segoe UI", Calibri, Arial, sans-serif; }
+    h2 {
+      font-size: 20px;
+      font-weight: 650;
+      margin: 36px 0 12px;
+      padding: 0 0 8px;
+      border-bottom: 1.5px solid var(--ink);
+    }
+    h2 .num {
+      color: var(--brand);
+      margin-right: 8px;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+    }
+    h3 {
+      font-size: 15.5px;
+      margin: 22px 0 8px;
+      font-weight: 650;
+    }
+    p { margin: 0 0 12px; }
+    .purpose {
+      background: var(--brand-soft);
+      border: 1px solid #edd9c8;
+      padding: 18px 20px;
+      margin: 0 0 28px;
+    }
+    .purpose h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--brand);
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    }
+    .purpose p { margin: 0; }
+    .toc {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 32px;
+      list-style: none;
+      padding: 0;
+      margin: 0 0 8px;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 13.5px;
+    }
+    .toc a {
+      color: var(--ink);
+      text-decoration: none;
+      display: flex;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px dotted var(--line);
+    }
+    .toc a:hover { color: var(--brand); }
+    .toc .n {
+      color: var(--brand);
+      font-weight: 700;
+      min-width: 1.6em;
+    }
+    ol.steps { padding-left: 22px; margin: 8px 0 16px; }
+    ol.steps > li, ul > li { margin: 6px 0; }
+    ul { padding-left: 22px; margin: 8px 0 16px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 13.5px;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: #111;
+      color: #fff;
+      padding: 9px 12px;
+      font-weight: 650;
+    }
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #faf9f6; }
+    .btn {
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 650;
+      border: 1px solid #e0c4ae;
+      background: var(--brand-soft);
+      padding: 1px 8px;
+      white-space: nowrap;
+    }
+    .note {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 0;
+      margin: 16px 0 20px;
+      border: 1px solid var(--line);
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 13.5px;
+    }
+    .note .label {
+      padding: 12px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+    }
+    .note .text { padding: 12px 14px; }
+    .note.info .label { background: var(--info-bg); color: var(--info); }
+    .note.ok .label { background: var(--ok-bg); color: var(--ok); }
+    .note.warn .label { background: var(--warn-bg); color: var(--warn); }
+    .routine {
+      border: 1px solid var(--ink);
+      padding: 18px 22px 8px;
+      margin: 28px 0 8px;
+    }
+    .routine h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    }
+    .doc-foot {
+      margin-top: 40px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 11.5px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    @media (max-width: 720px) {
+      .cover-inner, .body { padding: 24px 20px 36px; }
+      .cover-top, .meta, .toc, .note, .doc-foot { grid-template-columns: 1fr; display: block; }
+      .doc-id, .cover-top { text-align: left; }
+      .logo { height: 36px; margin-bottom: 16px; }
+      .meta div { padding: 10px 0; border-bottom: 1px solid var(--line); }
+      .note .label { display: block; }
+    }
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; max-width: none; }
+      .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      h2, .note, table, .routine { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <header class="cover">
+      <div class="cover-bar"></div>
+      <div class="cover-inner">
+        <div class="cover-top">
+          <img class="logo" src="../assets/images/vicast-logo-negro.png" alt="VICAST" />
+          <div class="doc-id">
+            <strong>MU-TEC-001</strong>
+            Revisión 01 · septiembre 2026<br />
+            Uso interno
+          </div>
+        </div>
+        <h1>Manual de uso<br />para técnicos de terreno</h1>
+        <p class="lead">
+          Procedimiento para registrar, finalizar y compartir levantamientos de superficies industriales en la aplicación VICAST.
+        </p>
+        <div class="meta">
+          <div>
+            <span>Documento</span>
+            <b>Manual de operación</b>
+          </div>
+          <div>
+            <span>Destinatario</span>
+            <b>Técnicos VICAST</b>
+          </div>
+          <div>
+            <span>Alcance</span>
+            <b>Aplicación móvil de terreno</b>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="body">
+      <div class="purpose">
+        <h3>Objeto</h3>
+        <p>
+          Este manual describe el uso de VICAST en terreno: acceso a la cuenta, registro de clientes y recintos,
+          ejecución del levantamiento, evidencia fotográfica, generación del informe y consulta de trabajos
+          finalizados del equipo. No cubre la instalación del sistema ni la administración de cuentas.
+        </p>
+      </div>
+
+      <h2><span class="num">00</span> Contenido</h2>
+      <ol class="toc">
+        <li><a href="#acceso"><span class="n">01</span> Acceso y recuperación de clave</a></li>
+        <li><a href="#menu"><span class="n">02</span> Navegación</a></li>
+        <li><a href="#inicio"><span class="n">03</span> Pantalla de inicio</a></li>
+        <li><a href="#catalogo"><span class="n">04</span> Clientes y recintos</a></li>
+        <li><a href="#nuevo"><span class="n">05</span> Nuevo levantamiento</a></li>
+        <li><a href="#wizard"><span class="n">06</span> Recorrido de la visita</a></li>
+        <li><a href="#fotos"><span class="n">07</span> Evidencia fotográfica</a></li>
+        <li><a href="#finalizar"><span class="n">08</span> Cierre e informe</a></li>
+        <li><a href="#equipo"><span class="n">09</span> Equipo VICAST</a></li>
+        <li><a href="#perfil"><span class="n">10</span> Perfil del técnico</a></li>
+        <li><a href="#offline"><span class="n">11</span> Trabajo sin conexión</a></li>
+        <li><a href="#problemas"><span class="n">12</span> Incidencias frecuentes</a></li>
+      </ol>
+
+      <h2 id="acceso"><span class="num">01</span> Acceso y recuperación de clave</h2>
+      <p>La cuenta es entregada por VICAST. No corresponde crear un usuario por iniciativa propia, salvo instrucción expresa.</p>
+      <ol class="steps">
+        <li>Abra la aplicación e ingrese el correo y la contraseña asignados.</li>
+        <li>Si lo desea, active la opción para recordar el correo en este dispositivo.</li>
+        <li>Pulse <span class="btn">Iniciar sesión</span>.</li>
+      </ol>
+      <h3>1.1 Recuperación de contraseña</h3>
+      <ol class="steps">
+        <li>En la pantalla de ingreso, seleccione <strong>¿Olvidaste tu contraseña?</strong></li>
+        <li>Indique el correo y pulse <span class="btn">Enviar código</span>.</li>
+        <li>Revise el correo electrónico: recibirá un <strong>código de 8 dígitos</strong>.</li>
+        <li>Ingrese el código y defina una contraseña nueva (mínimo 6 caracteres). Confírmela.</li>
+        <li>Inicie sesión con la clave actualizada.</li>
+      </ol>
+      <div class="note warn">
+        <div class="label">Atención</div>
+        <div class="text">El código tiene vigencia limitada. Si no llega o expiró, solicite uno nuevo con <strong>Reenviar código</strong>.</div>
+      </div>
+
+      <h2 id="menu"><span class="num">02</span> Navegación</h2>
+      <p>El menú se abre desde la esquina superior izquierda. Las secciones son las siguientes:</p>
+      <table>
+        <thead><tr><th>Sección</th><th>Función</th></tr></thead>
+        <tbody>
+          <tr><td>Inicio</td><td>Resumen de actividad, borradores y acceso a un nuevo levantamiento.</td></tr>
+          <tr><td>Clientes</td><td>Empresas registradas por el técnico. No son visibles en el catálogo de otros usuarios.</td></tr>
+          <tr><td>Proyectos</td><td>Recintos o plantas asociados a un cliente propio.</td></tr>
+          <tr><td>Levantamientos</td><td>Visitas del técnico, en borrador o finalizadas.</td></tr>
+          <tr><td>Equipo VICAST</td><td>Levantamientos finalizados del equipo, para consulta y descarga del informe.</td></tr>
+          <tr><td>Perfil</td><td>Datos del técnico y su historial.</td></tr>
+          <tr><td>Cerrar sesión</td><td>Cierra la sesión en el dispositivo. La información ya sincronizada permanece en la cuenta.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="inicio"><span class="num">03</span> Pantalla de inicio</h2>
+      <p>Muestra el número de clientes, proyectos activos, levantamientos realizados y borradores.</p>
+      <ul>
+        <li><span class="btn">Nuevo levantamiento</span> inicia una visita.</li>
+        <li><strong>Continuar levantamiento</strong> retoma un borrador.</li>
+        <li>Si existe un borrador pendiente, la aplicación puede recordarlo al ingresar.</li>
+      </ul>
+      <p>Deslice hacia abajo para actualizar la información ya guardada en la cuenta.</p>
+
+      <h2 id="catalogo"><span class="num">04</span> Clientes y recintos</h2>
+      <div class="note ok">
+        <div class="label">Criterio</div>
+        <div class="text">
+          Cada técnico administra su propio catálogo. Un cliente o recinto creado por un usuario no se transfiere
+          al catálogo de otro. En Equipo VICAST el resto del equipo puede consultar el <strong>informe</strong> de un
+          levantamiento ya finalizado; no puede reutilizar ese cliente como propio.
+        </div>
+      </div>
+      <ul>
+        <li>En <strong>Clientes</strong> se registra la empresa o razón social. Puede archivarse cuando deje de usarse.</li>
+        <li>En <strong>Proyectos</strong> se registra el recinto o planta, vinculado a un cliente propio.</li>
+        <li>Cliente y recinto también pueden crearse al iniciar el levantamiento, sin pasar previamente por esas pantallas.</li>
+      </ul>
+
+      <h2 id="nuevo"><span class="num">05</span> Nuevo levantamiento</h2>
+      <p>Desde Inicio o Levantamientos, pulse <span class="btn">Nuevo levantamiento</span>.</p>
+      <ol class="steps">
+        <li>Seleccione un recinto existente o cree cliente y recinto en el mismo paso.</li>
+        <li>Para comenzar son suficientes: nombre del cliente, nombre del recinto y tipo de servicio.</li>
+        <li>Seleccione el servicio: sistemas epóxicos; poliuretano cemento; impermeabilización de cubiertas; o control de corrosión.</li>
+        <li>RUT, contacto, teléfono, dirección, ciudad y contacto en terreno pueden completarse ahora o más adelante. Si faltan, la aplicación lo indica; no impiden iniciar. Esos datos se incorporan al informe PDF.</li>
+      </ol>
+      <p>Al confirmar, se genera un borrador con código correlativo (por ejemplo <strong>LEV-2026-0001</strong>) y se abre el recorrido de la visita.</p>
+
+      <h2 id="wizard"><span class="num">06</span> Recorrido de la visita</h2>
+      <p>La barra superior indica el paso actual. Es posible volver atrás. El trabajo se guarda en el dispositivo a medida que se avanza.</p>
+      <table>
+        <thead><tr><th>Paso</th><th>Registro</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1. Información</td>
+            <td>Alcance (completa, por sectores o puntos críticos), condición general, motivo de la visita y datos de cliente y recinto para el informe.</td>
+          </tr>
+          <tr>
+            <td>2. Condiciones</td>
+            <td>Antecedentes del servicio: piso, cubierta o metal; problemas; exposiciones; revestimiento existente, entre otros.</td>
+          </tr>
+          <tr>
+            <td>3. Sectores</td>
+            <td>Zonas o puntos críticos: nombre, superficie, condición, criticidad, problemas y fotografías. Un sector puede duplicarse. Si el alcance es por sectores o puntos críticos, se requiere al menos uno con nombre.</td>
+          </tr>
+          <tr>
+            <td>4. Evidencia</td>
+            <td>Fotografías generales de la visita, adicionales a las de cada sector o elemento.</td>
+          </tr>
+          <tr>
+            <td>5. Observaciones</td>
+            <td>Notas de faena, acceso, operación de planta, conclusión y comentarios.</td>
+          </tr>
+          <tr>
+            <td>6. Revisión</td>
+            <td>Resumen previo al cierre. Si falta un dato del informe, se muestra un aviso; el levantamiento puede finalizarse igualmente.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Dentro de un sector pueden agregarse <strong>elementos</strong> (pilar, canaleta, sello u otros), cada uno con condición, corrosión y fotografías propias.</p>
+
+      <h2 id="fotos"><span class="num">07</span> Evidencia fotográfica</h2>
+      <ul>
+        <li>Utilice la cámara del teléfono o la galería.</li>
+        <li>La aplicación comprime la imagen para no saturar el dispositivo ni el almacenamiento.</li>
+        <li>Cada fotografía admite categoría y una nota breve.</li>
+        <li>Las imágenes se incorporan al PDF (completas, sin recorte) y al archivo Excel.</li>
+      </ul>
+      <p>Sin conexión, las fotos permanecen en el teléfono y se envían al restablecerse la red. Conviene dejar la aplicación abierta unos instantes al reconectar.</p>
+
+      <h2 id="finalizar"><span class="num">08</span> Cierre e informe</h2>
+      <ol class="steps">
+        <li>En Revisión, pulse <span class="btn">Finalizar levantamiento</span> y confirme.</li>
+        <li>El registro queda <strong>finalizado</strong>. Deja de editarse como borrador. Si el técnico es el titular, puede reabrirlo desde la ficha para corregir.</li>
+        <li>Desde la ficha o la pantalla de confirmación puede compartir o descargar el <strong>informe PDF</strong> y el <strong>Excel</strong>.</li>
+        <li>Seleccione el medio de envío del teléfono (correo, WhatsApp, Drive u otro).</li>
+      </ol>
+      <p>El PDF incluye cliente, recinto, servicio, sectores, hallazgos y anexo fotográfico. El Excel organiza la misma información en hojas, con fotografías incrustadas.</p>
+      <div class="note info">
+        <div class="label">Nota</div>
+        <div class="text">Si el informe advierte datos incompletos (RUT, contacto, ciudad u otros), complete el cliente o el recinto y genere el documento nuevamente. El levantamiento finalizado no se pierde.</div>
+      </div>
+
+      <h2 id="equipo"><span class="num">09</span> Equipo VICAST</h2>
+      <p>Esta sección presenta a los técnicos de VICAST. El usuario conectado aparece primero, identificado como <strong>Tú</strong>.</p>
+      <ul>
+        <li>Los levantamientos <strong>finalizados</strong> propios figuran siempre en esa tarjeta.</li>
+        <li>Los finalizados de los demás técnicos también se listan, una vez cerrados.</li>
+        <li>Al abrir un técnico se accede a la lista, a la ficha y a la descarga de PDF y Excel.</li>
+        <li>No está permitido editar, eliminar ni reabrir el trabajo de otro técnico.</li>
+        <li>Consultar un informe ajeno no incorpora ese cliente al catálogo propio.</li>
+      </ul>
+      <p>Equipo VICAST requiere conexión a internet.</p>
+
+      <h2 id="perfil"><span class="num">10</span> Perfil del técnico</h2>
+      <p>El icono de lápiz permite actualizar nombre, teléfono y fotografía. El nombre registrado es el que aparece como técnico en el informe.</p>
+      <p>La contraseña no se modifica en esta pantalla. Debe usarse el flujo <strong>¿Olvidaste tu contraseña?</strong> en el ingreso.</p>
+
+      <h2 id="offline"><span class="num">11</span> Trabajo sin conexión</h2>
+      <p>Es posible continuar el levantamiento sin red. En la parte superior pueden aparecer estos avisos:</p>
+      <table>
+        <thead><tr><th>Aviso</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td>Sin conexión</td><td>El trabajo queda almacenado en este teléfono.</td></tr>
+          <tr><td>Subiendo cambios</td><td>La información se está enviando a la cuenta.</td></tr>
+          <tr><td>Cambios subidos</td><td>La información ya consta en la cuenta.</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>No desinstale la aplicación ni borre sus datos si la sincronización no ha terminado.</li>
+        <li>Al recuperar señal, abra VICAST y espere a que concluya la subida, en especial de fotografías.</li>
+        <li>Cerrar sesión no elimina la copia local del usuario en ese dispositivo.</li>
+      </ul>
+
+      <h2 id="problemas"><span class="num">12</span> Incidencias frecuentes</h2>
+      <table>
+        <thead><tr><th>Situación</th><th>Acción</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>No es posible ingresar</td>
+            <td>Verifique correo y contraseña. Si el usuario está desactivado, solicite su activación a VICAST.</td>
+          </tr>
+          <tr>
+            <td>No llega el código de 8 dígitos</td>
+            <td>Revise la carpeta de correo no deseado. Reenvíe el código. Si persiste, confirme el correo de la cuenta con soporte.</td>
+          </tr>
+          <tr>
+            <td>No aparece el cliente de un colega</td>
+            <td>Es el comportamiento previsto: el catálogo es individual. El informe de ese colega se consulta en Equipo VICAST una vez finalizado.</td>
+          </tr>
+          <tr>
+            <td>Equipo VICAST no muestra al resto</td>
+            <td>Conéctese a internet y actualice deslizando hacia abajo. Si continúa, informe a soporte.</td>
+          </tr>
+          <tr>
+            <td>El PDF o el Excel no se genera</td>
+            <td>Espere a que termine el armado (las fotografías demoran). Reintente con mejor conexión.</td>
+          </tr>
+          <tr>
+            <td>Las fotografías no figuran en el informe</td>
+            <td>Espere el aviso «Cambios subidos» y genere el informe otra vez.</td>
+          </tr>
+          <tr>
+            <td>No es posible editar un finalizado</td>
+            <td>El titular puede reabrirlo desde su ficha. Los registros de Equipo VICAST son de solo lectura.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="routine">
+        <h3>Secuencia recomendada en terreno</h3>
+        <ol class="steps">
+          <li>Ingresar. Si hay un borrador pendiente, continuarlo o iniciar uno nuevo.</li>
+          <li>Definir cliente, recinto y servicio. Recorrer sectores y registrar fotografías.</li>
+          <li>Revisar y finalizar.</li>
+          <li>Compartir el PDF (y el Excel, si se requiere) antes de retirarse o tan pronto exista red.</li>
+          <li>Si se trabajó sin señal, no cerrar la aplicación hasta ver «Cambios subidos».</li>
+        </ol>
+      </div>
+
+      <div class="doc-foot">
+        <div>VICAST · Levantamientos · MU-TEC-001 · Rev. 01</div>
+        <div>Documento de operación para técnicos · septiembre 2026</div>
+      </div>
+    </div>
+  </article>
+</body>
+</html>

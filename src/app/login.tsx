@@ -15,8 +15,7 @@ import { emailError } from '@/lib/validate';
 
 export default function LoginScreen() {
   const { session, login } = useAuth();
-  const params = useLocalSearchParams<{ registered?: string; reset?: string }>();
-  const justRegistered = params.registered === '1';
+  const params = useLocalSearchParams<{ reset?: string }>();
   const justReset = params.reset === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,11 +77,7 @@ export default function LoginScreen() {
       titleAccent="sesión"
       subtitle="Accede de forma segura a tu cuenta y lleva tus proyectos más lejos."
       notice={
-        justReset
-          ? 'Contraseña actualizada. Entra con tu email y la clave nueva.'
-          : justRegistered
-            ? 'Cuenta creada. Ahora inicia sesión con tu email y contraseña.'
-            : undefined
+        justReset ? 'Contraseña actualizada. Entra con tu email y la clave nueva.' : undefined
       }
     >
       <View className="gap-3.5">
@@ -145,12 +140,6 @@ export default function LoginScreen() {
           onPress={() => void handleLogin()}
           icon={<ArrowRight size={18} color="#FFFFFF" />}
         />
-
-        <Pressable accessibilityRole="button" onPress={() => push('/register')} className="items-center py-1">
-          <Text className="text-sm text-white/70">
-            ¿No tienes cuenta? <Text className="font-semibold text-brand">Crear cuenta</Text>
-          </Text>
-        </Pressable>
       </View>
     </AuthScreen>
   );

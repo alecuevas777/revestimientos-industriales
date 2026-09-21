@@ -51,7 +51,7 @@ export default function ProjectsScreen() {
         onRefresh={refreshWorkspace}
         header={
           <>
-            <TabBrandHeader title="Proyectos" subtitle="Plantas o recintos. Cada uno puede tener varios levantamientos" />
+            <TabBrandHeader title="Proyectos" subtitle="Tus plantas o recintos. Cada uno puede tener varios levantamientos" />
             <View className="gap-3">
               <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar proyecto, cliente o ubicación" />
               <FilterChips

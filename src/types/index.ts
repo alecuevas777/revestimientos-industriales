@@ -9,6 +9,7 @@ export type User = {
 
 export type Client = {
   id: string;
+  createdBy?: string;
   name: string;
   rut?: string;
   contactName?: string;
@@ -28,6 +29,7 @@ export type ProjectStatus = 'active' | 'pending' | 'finished';
 
 export type Project = {
   id: string;
+  createdBy?: string;
   clientId: string;
   name: string;
   code?: string;
@@ -310,8 +312,8 @@ export type Survey = {
   photos: PhotoEvidence[];
 };
 
-export type ClientDraft = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'archived' | 'archivedAt'>;
-export type ProjectDraft = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
+export type ClientDraft = Omit<Client, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'archived' | 'archivedAt'>;
+export type ProjectDraft = Omit<Project, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>;
 export type ClientProjectSetup = {
   clientId?: string;
   client?: ClientDraft;

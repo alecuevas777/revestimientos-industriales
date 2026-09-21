@@ -149,22 +149,24 @@ function hasPendingLocalWork(surveys: Survey[], pendingSurveyIds: Set<string>) {
   return surveys.some((survey) => collectPhotos(survey).some(needsPhotoUpload));
 }
 
-function buildClient(draft: ClientDraft): Client {
+function buildClient(draft: ClientDraft, userId: string): Client {
   const now = new Date().toISOString();
   return {
     ...draft,
     id: createId(),
+    createdBy: userId,
     archived: false,
     createdAt: now,
     updatedAt: now,
   };
 }
 
-function buildProject(draft: ProjectDraft): Project {
+function buildProject(draft: ProjectDraft, userId: string): Project {
   const now = new Date().toISOString();
   return {
     ...draft,
     id: createId(),
+    createdBy: userId,
     createdAt: now,
     updatedAt: now,
   };
@@ -525,7 +527,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       addClient: async (draft) => {
         const userId = requireUserId();
-        const client = buildClient(draft);
+        const client = buildClient(draft, userId);
         const result = await saveClient(userId, client);
         setClients((current) => [result.value, ...current]);
         showToast(savedToast(result.synced, 'Cliente guardado'));
@@ -588,7 +590,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       addProject: async (draft) => {
         const userId = requireUserId();
-        const project = buildProject(draft);
+        const project = buildProject(draft, userId);
         const result = await saveProject(userId, project);
         setProjects((current) => [result.value, ...current]);
         showToast(savedToast(result.synced, 'Proyecto guardado'));
@@ -620,14 +622,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userId = requireUserId();
         let client = setup.clientId ? clientsRef.current.find((item) => item.id === setup.clientId) : undefined;
         if (!client && setup.client) {
-          const created = await saveClient(userId, buildClient(setup.client));
+          const created = await saveClient(userId, buildClient(setup.client, userId));
           client = created.value;
           setClients((current) => [client!, ...current]);
         }
         if (!client) {
           throw new Error('Falta el cliente para crear el proyecto.');
         }
-        const createdProject = await saveProject(userId, buildProject({ ...setup.project, clientId: client.id }));
+        const createdProject = await saveProject(userId, buildProject({ ...setup.project, clientId: client.id }, userId));
         setProjects((current) => [createdProject.value, ...current]);
         showToast(savedToast(createdProject.synced, setup.clientId ? 'Proyecto listo para el levantamiento' : 'Cliente y proyecto listos'));
         return { client, project: createdProject.value };

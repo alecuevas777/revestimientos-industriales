@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import {
+  Building2,
   ChevronRight,
   FolderKanban,
   Home,
@@ -27,6 +28,7 @@ const items: { label: string; route: string; screen?: string; prefixes: string[]
   { label: 'Clientes', route: 'clientes', screen: 'index', prefixes: ['/clientes'], icon: Users },
   { label: 'Proyectos', route: 'proyectos', screen: 'index', prefixes: ['/proyectos'], icon: FolderKanban },
   { label: 'Levantamientos', route: 'levantamientos', screen: 'index', prefixes: ['/levantamientos'], icon: MapPin },
+  { label: 'Equipo VICAST', route: 'equipo', screen: 'index', prefixes: ['/equipo'], icon: Building2 },
   { label: 'Perfil', route: 'perfil', prefixes: ['/perfil'], icon: UserRound },
 ];
 

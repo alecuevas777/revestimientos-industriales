@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VICAST · Informe de cobertura y listo para producción</title>
+  <style>
+    :root {
+      --ink: #141414;
+      --muted: #5c5c5c;
+      --line: #e6e6e6;
+      --paper: #f7f6f3;
+      --card: #fff;
+      --ok: #1f7a4d;
+      --ok-bg: #e8f6ee;
+      --warn: #9a6b00;
+      --warn-bg: #fff4d6;
+      --no: #b42318;
+      --no-bg: #fdecea;
+      --na: #555;
+      --na-bg: #eee;
+      --accent: #c45c26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+    header.hero {
+      background: #111;
+      color: #fff;
+      padding: 28px 32px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+    }
+    header.hero p { margin: 6px 0 0; color: #cfcfcf; font-size: 14px; }
+    h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+    h2 { font-size: 18px; margin: 28px 0 10px; }
+    h3 { font-size: 15px; margin: 18px 0 8px; }
+    .verdict {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0 8px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .verdict .card strong { display: block; font-size: 15px; margin-bottom: 6px; }
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+    }
+    .ok { background: var(--ok-bg); color: var(--ok); }
+    .warn { background: var(--warn-bg); color: var(--warn); }
+    .no { background: var(--no-bg); color: var(--no); }
+    .na { background: var(--na-bg); color: var(--na); }
+    p, li { font-size: 14px; color: #222; }
+    .muted { color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      font-size: 12.5px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 8px 8px;
+      vertical-align: top;
+    }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #666; background: #fafafa; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 20px; }
+    .kpi { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    .kpi b { display: block; font-size: 22px; }
+    .kpi span { font-size: 12px; color: var(--muted); }
+    ul.tight { margin: 8px 0; padding-left: 18px; }
+    .note { font-size: 13px; color: var(--muted); }
+    footer { margin-top: 36px; font-size: 12px; color: var(--muted); }
+    @media print {
+      body { background: #fff; }
+      .wrap { padding: 0; max-width: none; }
+      header.hero { border-radius: 0; }
+      .card, .kpi { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Informe de cobertura y listo para producción</h1>
+      <p>VICAST Levantamientos · Revestimientos Industriales</p>
+      <p>Fuentes: Matriz de Requerimientos v1.0 (15 sep 2026) · código actual · docs del repo · 20 de septiembre de 2026</p>
+    </header>
+
+    <div class="verdict">
+      <div class="card">
+        <span class="pill ok">Entrega técnico</span>
+        <strong>Sí: el flujo de terreno está completo</strong>
+        <p class="muted" style="margin:0">Auth, clientes, proyectos, wizard, fotos, PDF, perfil, filtros, aviso de borrador y banner de conexión están implementados. Coinciden con el alcance acordado (sin roles supervisor/admin, sin panel web, sin catálogo remoto).</p>
+      </div>
+      <div class="card">
+        <span class="pill warn">Producción LANDES</span>
+        <strong>Aún no: falta empaquetado y operación</strong>
+        <p class="muted" style="margin:0">No hay build de tienda (EAS / package Android-iOS), tests automatizados ni monitoreo. La matriz original (Fase 2 y roles) sigue abierta a propósito. Listo para piloto con técnicos reales, no para publicación masiva.</p>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><b>41 / 47</b><span>RF implementados en código</span></div>
+      <div class="kpi"><b>3</b><span>RF parciales (roles, Excel, visibilidad)</span></div>
+      <div class="kpi"><b>42 / 43</b><span>RF del alcance de esta entrega</span></div>
+      <div class="kpi"><b>9 / 14</b><span>RNF cubiertos o cubiertos con salvedad</span></div>
+    </div>
+
+    <h2>1. Cómo se evaluó</h2>
+    <div class="card">
+      <p>La matriz del 15 de septiembre describe un inventario del MVP local más el pase a Supabase. Desde entonces el producto avanzó: Auth real, sync, PDF, edición de perfil, filtros, aviso de borrador y aviso de conexión. Este informe actualiza cada ID contra el código de <code>revestimientos-industriales</code> y los documentos hermanos (alcance, checklist, propuesta de informe, README de Supabase).</p>
+      <ul class="tight">
+        <li><strong>Implementado:</strong> existe en la app y cumple el criterio de aceptación del alcance actual.</li>
+        <li><strong>Parcial:</strong> hay una parte (p. ej. PDF sí, Excel no; Auth sí, vistas de supervisor no).</li>
+        <li><strong>Fuera de entrega:</strong> roles, panel web y catálogos remotos, acordados para después.</li>
+        <li><strong>No aplica en producción:</strong> reset de datos demo (RF-012), retirado del perfil.</li>
+      </ul>
+    </div>
+
+    <h2>2. Veredicto por capa</h2>
+    <table>
+      <thead>
+        <tr><th>Capa</th><th>Estado</th><th>Comentario</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Producto de terreno (técnico)</td>
+          <td><span class="pill ok">Listo</span></td>
+          <td>Alta corta, wizard de 6 pasos, sectores/elementos, evidencia, cierre, ficha, PDF, historial con filtros.</td>
+        </tr>
+        <tr>
+          <td>Backend Supabase (Fase 1)</td>
+          <td><span class="pill ok">Listo para piloto</span></td>
+          <td>Auth, tablas, RLS de dueño, Storage privado, cola de fotos, hidratación al reconectar. Falta secuencia SQL del correlativo y cola de outbox estricta.</td>
+        </tr>
+        <tr>
+          <td>Informe PDF</td>
+          <td><span class="pill ok">Listo</span></td>
+          <td>PDF con cabecera, condiciones, sectores, fotos y conclusión. Excel (RF-068) no existe.</td>
+        </tr>
+        <tr>
+          <td>Roles y backoffice</td>
+          <td><span class="pill na">Fuera de entrega</span></td>
+          <td>El esquema admite rol supervisor/admin, pero la app no tiene esas pantallas ni RLS amplia. RF-004, RF-070, RF-080, RF-081, SB-03.</td>
+        </tr>
+        <tr>
+          <td>Publicación (Play / App Store)</td>
+          <td><span class="pill no">No listo</span></td>
+          <td>No hay <code>eas.json</code>, ni <code>android.package</code> / bundle iOS. Solo Expo Go / web de apoyo.</td>
+        </tr>
+        <tr>
+          <td>Operación (QA, logs, backup)</td>
+          <td><span class="pill warn">Pendiente</span></td>
+          <td>Sin tests automatizados, sin Sentry. Backup depende del plan de Supabase, no está documentado como política LANDES (SB-09, RNF-010, RNF-014).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Requerimientos funcionales (RF)</h2>
+    <p class="note">Estados de la matriz original entre paréntesis cuando ya no coinciden.</p>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Módulo</th><th>Requerimiento</th><th>Hoy</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>RF-001</td><td>Acceso</td><td>Inicio de sesión email/clave</td><td><span class="pill ok">Hecho</span></td><td>Supabase Auth. Sin magic link (opcional en la matriz).</td></tr>
+        <tr><td>RF-002</td><td>Acceso</td><td>Persistencia de sesión</td><td><span class="pill ok">Hecho</span></td><td>Sesión persistente y refresh de token.</td></tr>
+        <tr><td>RF-003</td><td>Acceso</td><td>Cierre de sesión</td><td><span class="pill ok">Hecho</span></td><td>Login tras logout. Caché de trabajo se limpia; la nube conserva los datos.</td></tr>
+        <tr><td>RF-004</td><td>Acceso</td><td>Multi-usuario y roles</td><td><span class="pill na">Fuera</span></td><td>Cuentas reales sí. Flujos supervisor/admin no. RLS de dueño.</td></tr>
+        <tr><td>RF-005</td><td>Acceso</td><td>Recuperar contraseña</td><td><span class="pill ok">Hecho</span></td><td>Supabase Auth por email.</td></tr>
+        <tr><td>RF-010</td><td>Perfil</td><td>Ficha del técnico</td><td><span class="pill ok">Hecho</span></td><td>Nombre, email, rol mostrado, contadores, foto.</td></tr>
+        <tr><td>RF-011</td><td>Perfil</td><td>Levantamientos del técnico</td><td><span class="pill ok">Hecho</span></td><td>Filtrado por userId / auth.uid().</td></tr>
+        <tr><td>RF-012</td><td>Perfil</td><td>Reset datos demo</td><td><span class="pill na">No aplica</span></td><td>Retirado a propósito para producción.</td></tr>
+        <tr><td>RF-013</td><td>Perfil</td><td>Editar nombre, teléfono, foto</td><td><span class="pill ok">Hecho</span></td><td>Matriz decía No implementado. Ya está.</td></tr>
+        <tr><td>RF-020</td><td>Inicio</td><td>Dashboard</td><td><span class="pill ok">Hecho</span></td><td>Incluye saludo según hora.</td></tr>
+        <tr><td>RF-021</td><td>Inicio</td><td>Continuar borrador</td><td><span class="pill ok">Hecho</span></td><td>Atajo desde inicio y aviso in-app.</td></tr>
+        <tr><td>RF-030–035</td><td>Clientes</td><td>CRUD, ficha, archivar, proyecto desde cliente</td><td><span class="pill ok">Hecho</span></td><td>También hay eliminación (más allá de la matriz). RUT opcional.</td></tr>
+        <tr><td>RF-040–045</td><td>Proyectos</td><td>CRUD, ficha, alta corta</td><td><span class="pill ok">Hecho</span></td><td>Nombre + cliente (o alta corta) + tipo de servicio para iniciar.</td></tr>
+        <tr><td>RF-050</td><td>Levantamientos</td><td>Historial y filtros</td><td><span class="pill ok">Hecho</span></td><td>Búsqueda, estado, servicio, mal estado, criticidad.</td></tr>
+        <tr><td>RF-051</td><td>Levantamientos</td><td>Crear + código LEV</td><td><span class="pill ok">Hecho</span></td><td>Correlativo local; unique en Postgres. Sin sequence SQL (SB-06).</td></tr>
+        <tr><td>RF-052–057</td><td>Levantamientos</td><td>Wizard e info/condiciones</td><td><span class="pill ok">Hecho</span></td><td>Catálogos por servicio. m² y tipo de cubierta obligatorios al cerrar.</td></tr>
+        <tr><td>RF-058–059</td><td>Levantamientos</td><td>Sectores y elementos</td><td><span class="pill ok">Hecho</span></td><td>Alta, edición, duplicado, fotos. Validación de alcance.</td></tr>
+        <tr><td>RF-060</td><td>Levantamientos</td><td>Fotos cámara/galería</td><td><span class="pill ok">Hecho</span></td><td>Local + Storage privado. Compresión 0,7.</td></tr>
+        <tr><td>RF-061–065</td><td>Levantamientos</td><td>Notas, cierre, ficha</td><td><span class="pill ok">Hecho</span></td><td>Hay reapertura de finalizado (extra; la matriz pedía solo lectura).</td></tr>
+        <tr><td>RF-066</td><td>Levantamientos</td><td>Código correlativo único</td><td><span class="pill warn">Parcial</span></td><td>Único en BD. Riesgo de colisión entre técnicos offline hasta el unique.</td></tr>
+        <tr><td>RF-067</td><td>Levantamientos</td><td>Filtros criticidad / mal estado</td><td><span class="pill ok">Hecho</span></td><td></td></tr>
+        <tr><td>RF-068</td><td>Levantamientos</td><td>Informe PDF / Excel</td><td><span class="pill warn">Parcial</span></td><td>PDF listo. Excel no. Matriz decía No implementado.</td></tr>
+        <tr><td>RF-069</td><td>Levantamientos</td><td>Offline + sync</td><td><span class="pill ok">Hecho*</span></td><td>Trabajo local, hydrate/flush, cola de fotos, banner. No es cola outbox con reintentos de filas.</td></tr>
+        <tr><td>RF-070</td><td>Levantamientos</td><td>Visibilidad por rol</td><td><span class="pill na">Fuera</span></td><td>Cada técnico ve lo suyo. Supervisor no ve el conjunto.</td></tr>
+        <tr><td>RF-080–081</td><td>Backoffice</td><td>Panel web y catálogos remotos</td><td><span class="pill na">Fuera</span></td><td>Fase 2. Catálogos siguen en código.</td></tr>
+        <tr><td>RF-082</td><td>Avisos</td><td>Borrador pendiente</td><td><span class="pill ok">Hecho</span></td><td>In-app, no push. Matriz decía No implementado.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. No funcionales (RNF)</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Tema</th><th>Hoy</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>RNF-001</td><td>Expo 57 / RN / TS / web de apoyo</td><td><span class="pill ok">Hecho</span></td><td>Android e iOS vía Expo; web para apoyo interno.</td></tr>
+        <tr><td>RNF-002</td><td>Persistencia local → SQLite + nube</td><td><span class="pill warn">Parcial</span></td><td>AsyncStorage + archivos + caché de workspace. No SQLite.</td></tr>
+        <tr><td>RNF-003</td><td>Offline-first conflict-safe</td><td><span class="pill warn">Parcial</span></td><td>Offline sí. Resolución de conflicto = última escritura por <code>updatedAt</code>, no merge.</td></tr>
+        <tr><td>RNF-004</td><td>Auth + JWT + RLS</td><td><span class="pill ok">Hecho*</span></td><td>Auth y RLS por user_id. Sin org_id / tenant. Matriz desactualizada.</td></tr>
+        <tr><td>RNF-005</td><td>Cifrado en reposo / wipe corporativo</td><td><span class="pill no">No</span></td><td>Fase 2. Fotos y fichas en claro en el dispositivo.</td></tr>
+        <tr><td>RNF-006</td><td>Uso en terreno (44 px, chips)</td><td><span class="pill ok">Hecho</span></td><td></td></tr>
+        <tr><td>RNF-007</td><td>Español de Chile</td><td><span class="pill ok">Hecho</span></td><td></td></tr>
+        <tr><td>RNF-008</td><td>Listados y fotos comprimidas</td><td><span class="pill ok">Hecho</span></td><td>Calidad 0,7. No hay prueba de carga formal.</td></tr>
+        <tr><td>RNF-009</td><td>App usable si cae la API</td><td><span class="pill ok">Hecho</span></td><td>Modo local + banner de conexión.</td></tr>
+        <tr><td>RNF-010</td><td>Sentry / trazas de sync</td><td><span class="pill no">No</span></td><td>Errores de cola de fotos solo en consola / estado local.</td></tr>
+        <tr><td>RNF-011</td><td>Permisos de cámara y galería</td><td><span class="pill ok">Hecho</span></td><td>Mensajes de propósito en app.json.</td></tr>
+        <tr><td>RNF-012</td><td>Capas de código</td><td><span class="pill ok">Hecho</span></td><td></td></tr>
+        <tr><td>RNF-013</td><td>Multi-técnico y multi-empresa</td><td><span class="pill warn">Parcial</span></td><td>Varios técnicos sí. Tenant/org no.</td></tr>
+        <tr><td>RNF-014</td><td>Backup nube</td><td><span class="pill warn">No verificado</span></td><td>Depende del proyecto Supabase. No hay política escrita en el repo.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Backlog Supabase (SB)</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Ítem</th><th>Hoy</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SB-01</td><td>Auth + perfiles</td><td><span class="pill ok">Hecho</span> Tabla <code>perfiles</code> ligada a <code>auth.users</code>.</td></tr>
+        <tr><td>SB-02</td><td>Tablas Postgres</td><td><span class="pill ok">Hecho</span> Nombres en español: clientes, proyectos, levantamientos, sectores, elementos, fotos.</td></tr>
+        <tr><td>SB-03</td><td>RLS por rol / org</td><td><span class="pill warn">Parcial</span> CRUD del dueño. Catálogo compartido de clientes/proyectos. Sin lectura de supervisor ni org_id.</td></tr>
+        <tr><td>SB-04</td><td>Storage fotos</td><td><span class="pill ok">Hecho</span> Bucket privado <code>fotos/{uid}/{levantamiento}/{archivo}</code>. No usa {org}.</td></tr>
+        <tr><td>SB-05</td><td>Cola offline idempotente</td><td><span class="pill warn">Parcial</span> IDs locales + write-through + cola de fotos. No hay outbox de filas con reintento.</td></tr>
+        <tr><td>SB-06</td><td>Sequence LEV-AAAA-NNNN</td><td><span class="pill warn">Parcial</span> Unique de <code>codigo</code>. Generación en el cliente.</td></tr>
+        <tr><td>SB-07</td><td>Realtime supervisor</td><td><span class="pill na">Fuera</span> Fase 2 / baja.</td></tr>
+        <tr><td>SB-08</td><td>Edge Function PDF + email</td><td><span class="pill warn">Parcial</span> PDF en el dispositivo, no Edge ni envío por correo automático.</td></tr>
+        <tr><td>SB-09</td><td>Backup / retención LANDES</td><td><span class="pill no">Pendiente</span> Operación, no código.</td></tr>
+        <tr><td>SB-10</td><td>Migración AsyncStorage → nube</td><td><span class="pill warn">Parcial</span> Hidratar/empujar al login. No hay script one-shot de legado.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. Entidades, pantallas, catálogos y reglas</h2>
+    <div class="card">
+      <h3>Modelo de datos</h3>
+      <p>Las entidades de la matriz están cubiertas. El esquema real usa español (<code>perfiles</code>, <code>clientes</code>, <code>proyectos</code>, <code>levantamientos</code>, <code>sectores</code>, <code>elementos</code>, <code>fotos</code>) y campos extra: teléfono y foto de perfil, <code>activo</code>, datos de informe (contacto, cargo, ciudad, dirección, recinto). RUT sigue opcional, alineado con la matriz y con el criterio de “mínimo para iniciar”.</p>
+      <h3>Pantallas</h3>
+      <p>Todas las rutas de la hoja Pantallas existen, más: editar perfil, recuperar clave, y pantallas de informe embebidas en cliente/proyecto. El mapa de tabs usa <code>/(main)</code> en lugar de <code>/(tabs)</code> (detalle de implementación, no de producto).</p>
+      <h3>Catálogos</h3>
+      <p>Los valores cerrados de la hoja Catálogos coinciden con el código. Administración remota (RF-081) no está.</p>
+      <h3>Reglas de negocio RN-01 a RN-15</h3>
+      <p>Vigentes en validación y persistencia. Ajuste de producto: para <em>iniciar</em> un levantamiento solo son obligatorios cliente, proyecto y tipo de servicio. Alcance, estado, m² y sectores se exigen al <em>cerrar</em> (RN-05 a RN-07). Los campos del PDF se avisan con banner, no bloquean el inicio. Un finalizado se puede reabrir (extiende RN-04).</p>
+    </div>
+
+    <h2>7. Documentación del repo</h2>
+    <table>
+      <thead>
+        <tr><th>Documento</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Matriz Excel (15 sep)</td><td>Desactualizada: marca No/Parcial ítems ya hechos (RF-013, 068 PDF, 082, Auth).</td></tr>
+        <tr><td>docs/checklist-producto.html (18 sep)</td><td>Parcialmente desfasado respecto a conexión, campos obligatorios relajados y PDF.</td></tr>
+        <tr><td>docs/propuesta-informe-levantamiento</td><td>Vigente como diseño; el PDF de la app lo implementa.</td></tr>
+        <tr><td>README y supabase/README</td><td>Útiles para arranque. No sustituyen runbook de producción.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. Brechas que sí bloquean “producción”</h2>
+    <ul class="tight">
+      <li><strong>Build nativo de tienda:</strong> configurar EAS, applicationId / bundle identifier, iconos de store, cuentas Play/App Store y un binario firmado. Hoy solo corre en Expo Go / web.</li>
+      <li><strong>QA en dispositivo real:</strong> cámara, permisos, offline de verdad, reconexión y PDF en Android e iOS. No hay suite de tests en el repo.</li>
+      <li><strong>Migraciones aplicadas en el proyecto Supabase de producción:</strong> schema + hardening + teléfono/foto de perfil. Sin eso, Auth o sync fallan.</li>
+      <li><strong>Política de backup y de usuarios:</strong> quién crea cuentas, qué pasa si se desactiva un técnico (<code>activo</code> existe), retención de fotos.</li>
+    </ul>
+
+    <h2>9. Brechas que no bloquean un piloto</h2>
+    <ul class="tight">
+      <li>Roles supervisor/admin y panel web (fuera de esta entrega).</li>
+      <li>Excel de sectores/elementos.</li>
+      <li>Magic link, push notifications, Sentry, cifrado en reposo, tenant multi-empresa.</li>
+      <li>Sequence SQL del correlativo (mitigado por unique; dos técnicos offline el mismo año podrían chocar y el segundo fallaría al sync).</li>
+      <li>SQLite en lugar de AsyncStorage.</li>
+    </ul>
+
+    <h2>10. Recomendación</h2>
+    <div class="card">
+      <p><strong>Declarar el producto de terreno cerrado para piloto controlado</strong> (técnicos reales, proyecto Supabase de producción, cuentas creadas a mano, app vía Expo interno o APK interno cuando exista EAS).</p>
+      <p><strong>No declarar listo para producción LANDES / tiendas</strong> hasta: (1) build EAS Android+iOS, (2) prueba de campo de un ciclo completo con fotos y PDF, (3) confirmar backups y migraciones en el proyecto de nube, (4) actualizar la matriz Excel para que deje de ser la fuente desfasada.</p>
+      <p class="muted">Siguiente entrega de producto, si se retoma el alcance original: visibilidad supervisor (RF-004 / RF-070 / SB-03), panel web (RF-080) y correlativo en SQL (SB-06).</p>
+    </div>
+
+    <footer>
+      Informe generado el 20 de septiembre de 2026 a partir de la Matriz de Requerimientos v1.0 y el código de VICAST Levantamientos.
+      Alcance de esta entrega: aplicación del técnico, sin roles ni backoffice.
+    </footer>
+  </div>
+</body>
+</html>

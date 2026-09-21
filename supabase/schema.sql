@@ -117,7 +117,7 @@ after insert on auth.users
 for each row execute function public.al_crear_usuario();
 
 -- -----------------------------------------------------------------------------
--- Clientes (catálogo compartido del equipo en fase 1)
+-- Clientes (catálogo propio de cada técnico)
 -- -----------------------------------------------------------------------------
 create table public.clientes (
   id uuid primary key default gen_random_uuid(),
@@ -342,45 +342,73 @@ create policy perfiles_select_propio
 on public.perfiles for select to authenticated
 using (id = (select auth.uid()));
 
+create policy perfiles_select_equipo
+on public.perfiles for select to authenticated
+using (true);
+
 create policy perfiles_update_propio
 on public.perfiles for update to authenticated
 using (id = (select auth.uid()))
 with check (id = (select auth.uid()));
 
--- Clientes / proyectos: catálogo compartido del equipo (fase 1).
-create policy clientes_select_equipo
+-- Clientes / proyectos: cada técnico ve y edita solo lo que creó.
+-- Equipo VICAST puede leer la ficha de un recinto si hay un levantamiento finalizado.
+create policy clientes_select_propio
 on public.clientes for select to authenticated
-using (true);
+using (creado_por = (select auth.uid()));
 
 create policy clientes_insert_propio
 on public.clientes for insert to authenticated
 with check (creado_por = (select auth.uid()));
 
-create policy clientes_update_equipo
+create policy clientes_update_propio
 on public.clientes for update to authenticated
-using (true)
-with check (true);
+using (creado_por = (select auth.uid()))
+with check (creado_por = (select auth.uid()));
 
-create policy proyectos_select_equipo
+create policy clientes_delete_propio
+on public.clientes for delete to authenticated
+using (creado_por = (select auth.uid()));
+
+create policy proyectos_select_propio
 on public.proyectos for select to authenticated
-using (true);
+using (creado_por = (select auth.uid()));
 
 create policy proyectos_insert_propio
 on public.proyectos for insert to authenticated
 with check (creado_por = (select auth.uid()));
 
-create policy proyectos_update_equipo
+create policy proyectos_update_propio
 on public.proyectos for update to authenticated
-using (true)
-with check (true);
+using (creado_por = (select auth.uid()))
+with check (creado_por = (select auth.uid()));
 
-create policy clientes_delete_equipo
-on public.clientes for delete to authenticated
-using (true);
-
-create policy proyectos_delete_equipo
+create policy proyectos_delete_propio
 on public.proyectos for delete to authenticated
-using (true);
+using (creado_por = (select auth.uid()));
+
+create policy clientes_select_informe_equipo
+on public.clientes for select to authenticated
+using (
+  exists (
+    select 1
+    from public.proyectos p
+    join public.levantamientos l on l.proyecto_id = p.id
+    where p.cliente_id = clientes.id
+      and l.estado = 'completed'
+  )
+);
+
+create policy proyectos_select_informe_equipo
+on public.proyectos for select to authenticated
+using (
+  exists (
+    select 1
+    from public.levantamientos l
+    where l.proyecto_id = proyectos.id
+      and l.estado = 'completed'
+  )
+);
 
 -- Levantamientos: solo el técnico dueño
 create policy levantamientos_select_propio
@@ -399,6 +427,10 @@ with check (usuario_id = (select auth.uid()));
 create policy levantamientos_delete_propio
 on public.levantamientos for delete to authenticated
 using (usuario_id = (select auth.uid()));
+
+create policy levantamientos_select_equipo
+on public.levantamientos for select to authenticated
+using (estado = 'completed');
 
 -- Hijos: existen si el levantamiento es del usuario
 create policy sectores_todo_propio
@@ -446,6 +478,33 @@ with check (
   )
 );
 
+create policy sectores_select_equipo
+on public.sectores for select to authenticated
+using (
+  exists (
+    select 1 from public.levantamientos l
+    where l.id = levantamiento_id and l.estado = 'completed'
+  )
+);
+
+create policy elementos_select_equipo
+on public.elementos for select to authenticated
+using (
+  exists (
+    select 1 from public.levantamientos l
+    where l.id = levantamiento_id and l.estado = 'completed'
+  )
+);
+
+create policy fotos_select_equipo
+on public.fotos for select to authenticated
+using (
+  exists (
+    select 1 from public.levantamientos l
+    where l.id = levantamiento_id and l.estado = 'completed'
+  )
+);
+
 -- -----------------------------------------------------------------------------
 -- Storage: bucket privado de fotos
 -- Ruta: fotos/{auth.uid()}/{levantamiento_id}/{archivo}
@@ -475,6 +534,10 @@ using (
   bucket_id = 'fotos'
   and (storage.foldername(name))[1] = (select auth.uid()::text)
 );
+
+create policy fotos_storage_select_equipo
+on storage.objects for select to authenticated
+using (bucket_id = 'fotos');
 
 create policy fotos_storage_insert
 on storage.objects for insert to authenticated

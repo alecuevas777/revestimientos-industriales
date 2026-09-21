@@ -153,15 +153,7 @@ function photosFromRows(rows: FotoRow[]) {
   return rows.map((row) => photoFromRow(row, row.uri_local ?? ''));
 }
 
-export async function listSurveysForUser(userId: string) {
-  const { data, error } = await supabase
-    .from('levantamientos')
-    .select(SURVEY_COLUMNS)
-    .eq('usuario_id', userId)
-    .order('actualizado_en', { ascending: false });
-  if (error) throw new RemoteError(remoteMessage(error, 'No se pudieron cargar los levantamientos.'), error);
-
-  const surveys = (data ?? []) as LevantamientoRow[];
+async function hydrateSurveyRows(surveys: LevantamientoRow[]) {
   const surveyIds = surveys.map((row) => row.id);
   const [sectorRows, elementRows, photoRows] = await Promise.all([
     fetchBySurveyIds<SectorRow>('sectores', SECTOR_COLUMNS, surveyIds),
@@ -197,4 +189,44 @@ export async function listSurveysForUser(userId: string) {
       surveyPhotos.filter((photo) => !photo.sectorId && !photo.elementId),
     );
   });
+}
+
+export async function listSurveysForUser(userId: string) {
+  const { data, error } = await supabase
+    .from('levantamientos')
+    .select(SURVEY_COLUMNS)
+    .eq('usuario_id', userId)
+    .order('actualizado_en', { ascending: false });
+  if (error) throw new RemoteError(remoteMessage(error, 'No se pudieron cargar los levantamientos.'), error);
+  return hydrateSurveyRows((data ?? []) as LevantamientoRow[]);
+}
+
+export async function listCompletedSurveys() {
+  const { data, error } = await supabase
+    .from('levantamientos')
+    .select(SURVEY_COLUMNS)
+    .eq('estado', 'completed')
+    .order('finalizado_en', { ascending: false });
+  if (error) {
+    const text = error.message.toLowerCase();
+    if (text.includes('row-level security') || text.includes('permission denied')) {
+      throw new RemoteError(
+        'Falta aplicar en Supabase la migración de Equipo VICAST. SQL Editor → pega supabase/migrations/20260920223000_team_library.sql y Run.',
+      );
+    }
+    throw new RemoteError(remoteMessage(error, 'No se pudieron cargar los levantamientos del equipo.'), error);
+  }
+  try {
+    return await hydrateSurveyRows((data ?? []) as LevantamientoRow[]);
+  } catch {
+    return ((data ?? []) as LevantamientoRow[]).map((row) => surveyFromParts(row, [], []));
+  }
+}
+
+export async function getSurveyById(id: string) {
+  const { data, error } = await supabase.from('levantamientos').select(SURVEY_COLUMNS).eq('id', id).maybeSingle();
+  if (error) throw new RemoteError(remoteMessage(error, 'No se pudo cargar el levantamiento.'), error);
+  if (!data) return null;
+  const [survey] = await hydrateSurveyRows([data as LevantamientoRow]);
+  return survey ?? null;
 }

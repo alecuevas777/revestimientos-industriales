@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VICAST · Guía para entregar al cliente</title>
+  <style>
+    :root { --ink:#141414; --muted:#5c5c5c; --line:#e6e6e6; --paper:#f7f6f3; --ok:#1f7a4d; --warn:#9a6b00; --no:#b42318; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:var(--ink); background:var(--paper); line-height:1.45; }
+    .wrap { max-width:880px; margin:0 auto; padding:32px 20px 64px; }
+    header { background:#111; color:#fff; padding:28px 32px; border-radius:16px; margin-bottom:24px; }
+    header p { margin:6px 0 0; color:#cfcfcf; font-size:14px; }
+    h1 { margin:0; font-size:24px; }
+    h2 { font-size:18px; margin:28px 0 10px; }
+    h3 { font-size:15px; margin:16px 0 8px; }
+    p, li { font-size:14px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0; }
+    .warn { border-left:4px solid #c45c26; }
+    .ok { border-left:4px solid var(--ok); }
+    code, kbd { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; background:#eee; padding:1px 5px; border-radius:4px; }
+    pre { background:#111; color:#eee; padding:14px 16px; border-radius:10px; overflow:auto; font-size:12px; line-height:1.4; }
+    ol.steps { padding-left:22px; }
+    ol.steps > li { margin:8px 0; }
+    table { width:100%; border-collapse:collapse; background:#fff; font-size:13px; }
+    th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px; vertical-align:top; }
+    th { font-size:11px; text-transform:uppercase; color:#666; background:#fafafa; }
+    @media print { body { background:#fff; } .wrap { padding:0; } header { border-radius:0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Guía para entregar VICAST al cliente</h1>
+      <p>Pasos en el dashboard de Supabase y en tu PC. No va a Play Store: los técnicos usan Expo Go.</p>
+      <p>20 de septiembre de 2026 · Uso interno (tú), no es el manual del técnico.</p>
+    </header>
+
+    <div class="card ok">
+      <strong>Qué ya está en el código y no tienes que programar</strong>
+      <p class="muted" style="margin:8px 0 0">Auth, clientes, proyectos, levantamientos, fotos, PDF, perfil, filtros, aviso de borrador, banner de conexión. Si dos técnicos generan el mismo código LEV, la app lo sube al siguiente número solo. No hace falta cola extra ni correlativo SQL para entregar.</p>
+    </div>
+
+    <div class="card warn">
+      <strong>No pegues <code>schema.sql</code> en un proyecto que ya tiene datos reales.</strong>
+      <p class="muted" style="margin:8px 0 0">Ese archivo <em>borra</em> las tablas y las vuelve a crear. Úsalo solo si el proyecto está vacío o es de prueba.</p>
+    </div>
+
+    <h2>0. Qué vas a dejar listo</h2>
+    <ol class="steps">
+      <li>Un proyecto Supabase de producción con tablas, fotos y Auth.</li>
+      <li>La app apuntando a ese proyecto (<code>.env</code>).</li>
+      <li>Cuentas de los técnicos (tú las creas; ellos no se registran solos).</li>
+      <li>Backup de base y de fotos.</li>
+      <li>Una forma de abrir la app en el teléfono del cliente (Expo Go).</li>
+      <li>Una prueba completa: login → levantamiento con fotos → PDF.</li>
+    </ol>
+
+    <h2>1. Proyecto Supabase</h2>
+    <ol class="steps">
+      <li>Entra a <a href="https://supabase.com/dashboard">supabase.com/dashboard</a>.</li>
+      <li>Si el proyecto actual es de pruebas y no te importa perder datos: puedes reutilizarlo. Si ya hay datos de demo que no quieres mezclar con el cliente, crea un proyecto nuevo (New project), región cercana (p. ej. South America), guarda la contraseña de la base.</li>
+      <li>Plan: el gratuito sirve para piloto. Para un cliente con fotos, el plan Pro es más seguro por backups.</li>
+    </ol>
+
+    <h2>2. Aplicar el schema (una sola vez)</h2>
+    <h3>Opción A — proyecto vacío (recomendado si es entrega nueva)</h3>
+    <ol class="steps">
+      <li>Dashboard → <strong>SQL Editor</strong> → New query.</li>
+      <li>Abre en Cursor el archivo <code>supabase/schema.sql</code>.</li>
+      <li>Copia <strong>todo</strong> el archivo, pégalo, pulsa <strong>Run</strong>.</li>
+      <li>Debe terminar sin error. Si falla a mitad, no lo vuelvas a pegar a ciegas: ese script borra tablas al inicio.</li>
+    </ol>
+    <p>Con esto ya quedan: tablas, RLS, trigger de perfil, bucket privado <code>fotos</code>, políticas de Storage, borrar clientes/proyectos, teléfono y foto de perfil. <strong>No corras las migraciones después</strong>: ya están dentro de <code>schema.sql</code>.</p>
+
+    <h3>Opción B — el proyecto ya tiene tablas y datos que quieres conservar</h3>
+    <p>No uses <code>schema.sql</code>. En SQL Editor corre, en este orden, solo lo que falte:</p>
+    <ol class="steps">
+      <li><code>supabase/migrations/20260916192500_security_hardening.sql</code> (si aún no hay bucket <code>fotos</code> o columna <code>activo</code>).</li>
+      <li><code>supabase/migrations/20260918223000_catalog_delete_policies.sql</code> (si borrar cliente/proyecto falla en la app).</li>
+      <li><code>supabase/migrations/20260920180000_profile_phone_photo.sql</code> (si no existen <code>telefono</code> y <code>foto_path</code> en perfiles).</li>
+      <li><code>supabase/migrations/20260920223000_team_library.sql</code> (Equipo VICAST: ver finalizados del resto).</li>
+      <li><code>supabase/migrations/20260921153000_catalog_owner.sql</code> (clientes y recintos solo del técnico que los creó).</li>
+    </ol>
+    <p class="muted">Si una política “already exists”, está bien: esa parte ya estaba aplicada.</p>
+
+    <h3>Comprobar que quedó bien</h3>
+    <p>Table Editor debe mostrar: <code>perfiles</code>, <code>clientes</code>, <code>proyectos</code>, <code>levantamientos</code>, <code>sectores</code>, <code>elementos</code>, <code>fotos</code>.</p>
+    <p>Storage → buckets → <code>fotos</code>, privado (no public).</p>
+    <p>Pega esto en SQL Editor y Run. Todas las filas deben decir <code>ok</code>:</p>
+<pre>select 'perfiles' as item, to_regclass('public.perfiles') is not null as ok
+union all select 'clientes', to_regclass('public.clientes') is not null
+union all select 'proyectos', to_regclass('public.proyectos') is not null
+union all select 'levantamientos', to_regclass('public.levantamientos') is not null
+union all select 'sectores', to_regclass('public.sectores') is not null
+union all select 'elementos', to_regclass('public.elementos') is not null
+union all select 'fotos', to_regclass('public.fotos') is not null
+union all select 'bucket fotos', exists (select 1 from storage.buckets where id = 'fotos' and public = false)
+union all select 'perfiles.telefono', exists (
+  select 1 from information_schema.columns
+  where table_schema = 'public' and table_name = 'perfiles' and column_name = 'telefono'
+)
+union all select 'perfiles.foto_path', exists (
+  select 1 from information_schema.columns
+  where table_schema = 'public' and table_name = 'perfiles' and column_name = 'foto_path'
+);</pre>
+
+    <h2>3. Auth (para que solo entren los técnicos del cliente)</h2>
+    <ol class="steps">
+      <li><strong>Authentication → Providers → Email</strong>: Email habilitado. Confirm email: puedes dejarlo apagado si tú creas las cuentas a mano (más simple para entregar).</li>
+      <li><strong>Authentication → Sign In / Providers</strong> (o Authentication → Settings, según la UI): desactiva <strong>Allow new users to sign up</strong>. Así “Crear cuenta” en la app no sirve para extraños.</li>
+      <li><strong>Authentication → URL Configuration</strong>
+        <ul>
+          <li>Site URL: la URL de tu proyecto, p. ej. <code>https://xxxx.supabase.co</code></li>
+          <li>Redirect URLs, agrega: <code>vicast://</code> y <code>vicast://**</code> y, si usas web, <code>http://localhost:8081</code> y <code>http://localhost:8081/**</code></li>
+        </ul>
+      </li>
+      <li>Recuperar clave: la app pide un código de 8 dígitos del correo. En <strong>Authentication → Email Templates → Reset password</strong> el correo debe incluir <code>{{ .Token }}</code> (el código), no solo un enlace.</li>
+    </ol>
+
+    <h2>4. Conectar la app (<code>.env</code>)</h2>
+    <ol class="steps">
+      <li>Dashboard → <strong>Project Settings → API</strong> (a veces “Data API”).</li>
+      <li>Copia <strong>Project URL</strong> y la clave <strong>anon</strong> / <strong>publishable</strong> (la pública, no la <code>service_role</code>).</li>
+      <li>En la raíz del proyecto, archivo <code>.env</code> (ya está en <code>.gitignore</code>, no lo subas a git):</li>
+    </ol>
+<pre>EXPO_PUBLIC_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=eyJ...o la sb_publishable_...</pre>
+    <p>Reinicia Expo después de cambiar el <code>.env</code> (<code>npx expo start --clear</code>). Si dejas la clave <code>service_role</code>, cualquiera con la app bypasea la seguridad: no la uses.</p>
+
+    <h2>5. Crear las cuentas de los técnicos</h2>
+    <ol class="steps">
+      <li>Authentication → Users → <strong>Add user</strong> → Create new user.</li>
+      <li>Email real del técnico + contraseña temporal (mínimo 6 caracteres).</li>
+      <li>Marca <strong>Auto Confirm User</strong> para que pueda entrar ya.</li>
+      <li>Al crearlo, el trigger arma una fila en <code>perfiles</code>.</li>
+      <li>Table Editor → <code>perfiles</code> → edita <strong>nombre</strong> (el que sale en el PDF). Deja <code>rol = tecnico</code> y <code>activo = true</code>.</li>
+    </ol>
+    <p>Entrégales email + clave temporal y pide que la cambien en la app (olvidé mi contraseña o editar perfil no cambia la clave: usar “¿Olvidaste tu contraseña?”).</p>
+    <p>Si alguien se va: en <code>perfiles</code> pon <code>activo = false</code>. La app rechaza el login. Opcional: Authentication → el usuario → Ban.</p>
+
+    <h2>6. Backups</h2>
+    <ol class="steps">
+      <li>Project Settings → Infrastructure / Database → <strong>Backups</strong>.</li>
+      <li>Plan Free: hay respaldo diario limitado. Confirma que aparece al menos un backup.</li>
+      <li>Plan Pro: activa PITR si el cliente lo pide.</li>
+      <li>Storage: las fotos viven en el bucket <code>fotos</code>; el backup de Postgres no sustituye del todo las fotos. En Pro, revisa la retención de Storage. No borres el bucket.</li>
+    </ol>
+
+    <h2>7. Cómo se la das al cliente (sin Play Store)</h2>
+    <p>Los teléfonos Android (e iOS) instalan <strong>Expo Go</strong> desde la tienda. Tú arrancas el proyecto y ellos escanean el QR.</p>
+    <ol class="steps">
+      <li>En tu PC, en la carpeta <code>revestimientos-industriales</code>:</li>
+    </ol>
+<pre>npm install
+npx expo start --clear --tunnel</pre>
+    <ol class="steps" start="2">
+      <li>La primera vez Expo puede pedir cuenta en expo.dev (gratis).</li>
+      <li>En el teléfono: abrir Expo Go → escanear el QR.</li>
+      <li><code>--tunnel</code> sirve si no están en tu mismo WiFi (visita al cliente). En la oficina, sin tunnel también funciona.</li>
+      <li>Cámara y PDF funcionan en el teléfono, no cuentes con el navegador como entrega principal.</li>
+    </ol>
+    <p class="muted">Mientras tu PC (o una máquina que dejes encendida) no esté corriendo Expo, ellos no abren la app. Para un piloto de un día está bien. Si necesitan usarla todos los días sin ti, el siguiente paso sería un APK interno con EAS, no Play Store; eso es otro trabajo.</p>
+
+    <h2>8. Prueba de entrega (hazla tú antes de ir)</h2>
+    <ol class="steps">
+      <li>Login con una cuenta de técnico (no la tuya de dashboard).</li>
+      <li>Editar perfil: nombre, teléfono, foto.</li>
+      <li>Alta corta cliente + proyecto + tipo de servicio.</li>
+      <li>Wizard: condiciones, un sector, 2 fotos (cámara y galería).</li>
+      <li>Cerrar levantamiento → compartir PDF.</li>
+      <li>Modo avión: editar un borrador, quitar avión, ver que el banner sincroniza y las fotos aparecen en Storage → <code>fotos</code>.</li>
+      <li>Cerrar sesión y volver a entrar: deben seguir los datos.</li>
+      <li>En Table Editor, el levantamiento debe existir con su código <code>LEV-2026-…</code>.</li>
+    </ol>
+
+    <h2>9. Qué le dices al cliente el día 1</h2>
+    <table>
+      <thead><tr><th>Tema</th><th>Mensaje</th></tr></thead>
+      <tbody>
+        <tr><td>Cuentas</td><td>Cada técnico tiene su email. No se registran solos. No se ven los levantamientos de otro.</td></tr>
+        <tr><td>Obligatorio para empezar</td><td>Nombre de cliente, nombre de recinto, tipo de servicio. El RUT y datos del PDF se pueden completar después (sale un aviso).</td></tr>
+        <tr><td>Sin señal</td><td>Pueden trabajar. Al volver internet, se sube solo. Dejar la app abierta un momento al reconectar.</td></tr>
+        <tr><td>Informe</td><td>Se genera el PDF en el teléfono y se comparte (WhatsApp, correo, Drive).</td></tr>
+        <tr><td>Soporte</td><td>Tú creas/desactivas usuarios en Supabase. Ellos no administran el backend.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Checklist final</h2>
+    <table>
+      <thead><tr><th></th><th>Ítem</th></tr></thead>
+      <tbody>
+        <tr><td>☐</td><td>SQL aplicado y query de comprobación todo <code>ok</code></td></tr>
+        <tr><td>☐</td><td>Bucket <code>fotos</code> privado</td></tr>
+        <tr><td>☐</td><td>Sign up público desactivado</td></tr>
+        <tr><td>☐</td><td><code>.env</code> con URL y clave anon del proyecto de entrega</td></tr>
+        <tr><td>☐</td><td>Un usuario por técnico, nombre bien en <code>perfiles</code></td></tr>
+        <tr><td>☐</td><td>Backup visible en el dashboard</td></tr>
+        <tr><td>☐</td><td>Prueba completa en teléfono (fotos + PDF + offline)</td></tr>
+        <tr><td>☐</td><td>Expo Go + QR (o tunnel) probado en un teléfono que no sea el tuyo</td></tr>
+      </tbody>
+    </table>
+
+    <p class="muted">Archivos de esta guía: <code>docs/guia-entrega-cliente.html</code> y <code>docs/guia-entrega-cliente.pdf</code>.</p>
+  </div>
+</body>
+</html>

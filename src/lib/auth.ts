@@ -249,7 +249,7 @@ export async function resetPasswordWithCode(input: {
 
   const invalidEmail = emailError(email, true);
   if (invalidEmail) return invalidEmail;
-  if (token.length < 6) return 'Ingresa el código de 6 dígitos del correo.';
+  if (token.length !== 8) return 'Ingresa el código de 8 dígitos del correo.';
   if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
 
   const { error } = await supabase.auth.verifyOtp({

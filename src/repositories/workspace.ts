@@ -38,6 +38,24 @@ function byUpdatedAt<T extends { id: string; updatedAt: string }>(local: T[], re
   return [...map.values()];
 }
 
+function isOwnedBy(userId: string, createdBy?: string) {
+  return createdBy === userId;
+}
+
+function keepOwnedCatalog<T extends { id: string; createdBy?: string; updatedAt: string }>(
+  userId: string,
+  cached: T[],
+  remote: T[],
+) {
+  const remoteIds = new Set(remote.map((item) => item.id));
+  const pending = cached.filter((item) => {
+    if (remoteIds.has(item.id)) return true;
+    if (!isUuid(item.id)) return true;
+    return item.createdBy === userId;
+  });
+  return byUpdatedAt(pending, remote);
+}
+
 function referencedIds(surveys: Survey[], projects: Project[]) {
   const projectIds = new Set(surveys.map((survey) => survey.projectId));
   const clientIds = new Set(
@@ -150,8 +168,8 @@ export async function hydrateWorkspace(userId: string): Promise<{
 
   try {
     const [remoteClients, remoteProjects, remoteSurveys] = await Promise.all([
-      listClients(),
-      listProjects(),
+      listClients(userId),
+      listProjects(userId),
       listSurveysForUser(userId),
     ]);
 
@@ -162,21 +180,12 @@ export async function hydrateWorkspace(userId: string): Promise<{
       surveys: remoteSurveys,
     });
 
+    const projects = keepOwnedCatalog(userId, cached.projects, remoteProjects);
+    const clients = keepOwnedCatalog(userId, cached.clients, remoteClients);
+
     const snapshot: WorkspaceSnapshot = {
-      clients: withoutDeleted(
-        [
-          ...byUpdatedAt(cached.clients.filter((item) => isUuid(item.id)), remoteClients),
-          ...cached.clients.filter((item) => !isUuid(item.id)),
-        ],
-        deleted.clients,
-      ),
-      projects: withoutDeleted(
-        [
-          ...byUpdatedAt(cached.projects.filter((item) => isUuid(item.id)), remoteProjects),
-          ...cached.projects.filter((item) => !isUuid(item.id)),
-        ],
-        deleted.projects,
-      ),
+      clients: withoutDeleted(clients, deleted.clients),
+      projects: withoutDeleted(projects, deleted.projects),
       surveys: withoutDeleted(
         [
           ...byUpdatedAt(cached.surveys.filter((item) => isUuid(item.id)), remoteSurveys),
@@ -209,7 +218,7 @@ async function pushPending(userId: string, local: WorkspaceSnapshot, remote: Wor
   const remoteSurveys = new Map(remote.surveys.map((item) => [item.id, item]));
 
   for (const client of local.clients) {
-    if (!isUuid(client.id)) continue;
+    if (!isUuid(client.id) || !isOwnedBy(userId, client.createdBy)) continue;
     const remoteClient = remoteClients.get(client.id);
     if (remoteClient && remoteClient.updatedAt >= client.updatedAt) continue;
     try {
@@ -220,7 +229,7 @@ async function pushPending(userId: string, local: WorkspaceSnapshot, remote: Wor
   }
 
   for (const project of local.projects) {
-    if (!isUuid(project.id) || !isUuid(project.clientId)) continue;
+    if (!isUuid(project.id) || !isUuid(project.clientId) || !isOwnedBy(userId, project.createdBy)) continue;
     const remoteProject = remoteProjects.get(project.id);
     if (remoteProject && remoteProject.updatedAt >= project.updatedAt) continue;
     try {
@@ -253,38 +262,44 @@ async function persistSurveyTree(userId: string, survey: Survey, removed?: Remov
   const cache = await readWorkspaceCache(userId);
   const project = cache.projects.find((item) => item.id === survey.projectId);
   const client = project ? cache.clients.find((item) => item.id === project.clientId) : undefined;
-  if (client && isUuid(client.id)) await upsertClient(client, userId);
-  if (project && isUuid(project.id) && isUuid(project.clientId)) await upsertProject(project, userId);
+  if (client && isUuid(client.id) && isOwnedBy(userId, client.createdBy)) await upsertClient(client, userId);
+  if (project && isUuid(project.id) && isUuid(project.clientId) && isOwnedBy(userId, project.createdBy)) {
+    await upsertProject(project, userId);
+  }
   return upsertSurveyRemote(survey, removed);
 }
 
 export async function persistClient(userId: string, client: Client): Promise<PersistResult<Client>> {
   const cache = await readWorkspaceCache(userId);
-  await saveSnapshot(userId, { ...cache, clients: upsertItem(cache.clients, client) });
+  const owned = { ...client, createdBy: client.createdBy || userId };
+  await saveSnapshot(userId, { ...cache, clients: upsertItem(cache.clients, owned) });
   if (!isUuid(client.id)) {
-    return { value: client, synced: false, error: 'El cliente queda solo en este dispositivo.' };
+    return { value: owned, synced: false, error: 'El cliente queda solo en este dispositivo.' };
   }
   try {
-    await upsertClient(client, userId);
-    return { value: client, synced: true };
+    await upsertClient(owned, userId);
+    return { value: owned, synced: true };
   } catch (error) {
-    return { value: client, synced: false, error: remoteMessage(error, 'Cliente guardado en este dispositivo.') };
+    return { value: owned, synced: false, error: remoteMessage(error, 'Cliente guardado en este dispositivo.') };
   }
 }
 
 export async function persistProject(userId: string, project: Project): Promise<PersistResult<Project>> {
   const cache = await readWorkspaceCache(userId);
-  await saveSnapshot(userId, { ...cache, projects: upsertItem(cache.projects, project) });
+  const owned = { ...project, createdBy: project.createdBy || userId };
+  await saveSnapshot(userId, { ...cache, projects: upsertItem(cache.projects, owned) });
   if (!isUuid(project.id) || !isUuid(project.clientId)) {
-    return { value: project, synced: false, error: 'El proyecto queda solo en este dispositivo.' };
+    return { value: owned, synced: false, error: 'El proyecto queda solo en este dispositivo.' };
   }
   try {
     const client = cache.clients.find((item) => item.id === project.clientId);
-    if (client && isUuid(client.id)) await upsertClient(client, userId);
-    await upsertProject(project, userId);
-    return { value: project, synced: true };
+    if (client && isUuid(client.id) && isOwnedBy(userId, client.createdBy || userId)) {
+      await upsertClient({ ...client, createdBy: client.createdBy || userId }, userId);
+    }
+    await upsertProject(owned, userId);
+    return { value: owned, synced: true };
   } catch (error) {
-    return { value: project, synced: false, error: remoteMessage(error, 'Proyecto guardado en este dispositivo.') };
+    return { value: owned, synced: false, error: remoteMessage(error, 'Proyecto guardado en este dispositivo.') };
   }
 }
 

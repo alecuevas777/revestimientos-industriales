@@ -10,3 +10,7 @@ export function clientProjectReportGaps(client?: Client, project?: Project) {
   if (!project?.siteContactName?.trim()) missing.push('Contacto en terreno');
   return missing;
 }
+
+export function surveyReadyToShare(client?: Client, project?: Project) {
+  return Boolean(client && project && clientProjectReportGaps(client, project).length === 0);
+}

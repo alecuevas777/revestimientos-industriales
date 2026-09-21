@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { SurveyReportButton } from '@/components/SurveyReportButton';
+import { SurveyExportButtons } from '@/components/SurveyExportButtons';
 import { useApp } from '@/context/AppProvider';
 import { useAuth } from '@/context/AuthProvider';
 import { replace, routeParam } from '@/lib/nav';
@@ -49,11 +49,13 @@ export default function SurveySuccessScreen() {
         </View>
       </Card>
       <View className="mt-6 gap-3">
-        <SurveyReportButton
+        <SurveyExportButtons
           survey={survey}
           client={client}
           project={project}
           technician={session?.name ?? 'Técnico'}
+          pdfVariant="primary"
+          pdfLabel="Generar informe PDF"
         />
         <Button label="Ver levantamiento" variant="secondary" onPress={() => replace(`/levantamientos/${survey.id}`)} />
         <Button

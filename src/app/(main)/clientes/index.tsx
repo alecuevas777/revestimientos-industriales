@@ -53,7 +53,7 @@ export default function ClientsScreen() {
         onRefresh={refreshWorkspace}
         header={
           <>
-            <TabBrandHeader title="Clientes" subtitle="Empresas. Cada una puede tener varios proyectos" />
+            <TabBrandHeader title="Clientes" subtitle="Tus empresas. No se mezclan con las de otros técnicos" />
             <View className="gap-3">
               <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar cliente, contacto o teléfono" />
               <FilterChips

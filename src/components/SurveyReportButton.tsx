@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { useAppActions } from '@/context/AppProvider';
 import { useActionLock } from '@/hooks/useActionLock';
 import { clientProjectReportGaps } from '@/lib/reportReady';
+import { shareSurveyExcel } from '@/services/surveyExcel';
 import { shareSurveyReport, surveyReportWarnings } from '@/services/surveyReport';
 import type { Client, Project, Survey } from '@/types';
 
@@ -13,6 +14,7 @@ type Props = {
   client?: Client;
   project?: Project;
   technician: string;
+  format?: 'pdf' | 'excel';
   variant?: 'primary' | 'secondary' | 'ghost';
   label?: string;
 };
@@ -22,38 +24,49 @@ export function SurveyReportButton({
   client,
   project,
   technician,
+  format = 'pdf',
   variant = 'primary',
-  label = 'Generar informe PDF',
+  label,
 }: Props) {
   const { showToast } = useAppActions();
   const [loading, setLoading] = useState(false);
   const run = useActionLock();
+  const actionLabel = label ?? (format === 'excel' ? 'Compartir Excel' : 'Generar informe PDF');
 
   async function handlePress() {
     await run(async () => {
       setLoading(true);
       try {
+        const input = { survey, client, project, technician };
         const gaps = clientProjectReportGaps(client, project);
-        const warnings = surveyReportWarnings({ survey, client, project, technician });
-        await shareSurveyReport({ survey, client, project, technician });
+        const warnings = surveyReportWarnings(input);
+        if (format === 'excel') {
+          await shareSurveyExcel(input);
+        } else {
+          await shareSurveyReport(input);
+        }
         if (gaps.length) {
           showToast(`Informe listo. Faltan: ${gaps.slice(0, 2).join(', ')}${gaps.length > 2 ? '…' : ''}`);
         } else if (warnings[0]) {
           showToast(warnings[0]);
         } else {
-          showToast('Informe PDF listo para compartir');
+          showToast(format === 'excel' ? 'Excel listo para compartir' : 'Informe PDF listo para compartir');
         }
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : String(caught);
         if (message.toLowerCase().includes('cancel') || message.toLowerCase().includes('did not share')) {
           return;
         }
-        Alert.alert('No se pudo generar el informe', message || 'Inténtalo de nuevo en un momento.', [{ text: 'Entendido' }]);
+        Alert.alert(
+          format === 'excel' ? 'No se pudo generar el Excel' : 'No se pudo generar el informe',
+          message || 'Inténtalo de nuevo en un momento.',
+          [{ text: 'Entendido' }],
+        );
       } finally {
         setLoading(false);
       }
     });
   }
 
-  return <Button label={label} variant={variant} loading={loading} onPress={() => void handlePress()} />;
+  return <Button label={actionLabel} variant={variant} loading={loading} onPress={() => void handlePress()} />;
 }

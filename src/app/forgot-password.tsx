@@ -59,6 +59,10 @@ export default function ForgotPasswordScreen() {
   }
 
   async function handleSavePassword() {
+    if (token.replace(/\s/g, '').length !== 8) {
+      setError('Ingresa el código de 8 dígitos del correo.');
+      return;
+    }
     if (password.length < 6) {
       setError('La contraseña debe tener mínimo 6 caracteres.');
       return;
@@ -99,21 +103,21 @@ export default function ForgotPasswordScreen() {
         stackedTitle
         titleLead="Nueva"
         titleAccent="contraseña"
-        subtitle={`Ingresa el código enviado a ${email.trim().toLowerCase()} y elige una nueva contraseña.`}
+        subtitle={`Ingresa el código de 8 dígitos enviado a ${email.trim().toLowerCase()} y elige una nueva contraseña.`}
       >
         <View className="gap-3.5">
           <AuthField
             icon={Mail}
             value={token}
             onChangeText={(value) => {
-              setToken(value.replace(/[^\d]/g, '').slice(0, 6));
+              setToken(value.replace(/[^\d]/g, '').slice(0, 8));
               setError('');
             }}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
-            placeholder="Código"
-            maxLength={6}
+            placeholder="Código de 8 dígitos"
+            maxLength={8}
           />
           <AuthField
             icon={Lock}
@@ -166,7 +170,7 @@ export default function ForgotPasswordScreen() {
       stackedTitle
       titleLead="Recuperar"
       titleAccent="contraseña"
-      subtitle="Te enviaremos un código de 6 dígitos a tu correo para restablecer tu contraseña."
+      subtitle="Te enviaremos un código de 8 dígitos a tu correo para restablecer tu contraseña."
     >
       <View className="gap-3.5">
         <AuthField

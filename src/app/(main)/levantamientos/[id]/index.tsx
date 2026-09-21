@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { Pencil } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { InfoRow } from '@/components/InfoRow';
 import { PhotoGrid } from '@/components/PhotoGrid';
@@ -12,7 +12,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { SurveyReportButton } from '@/components/SurveyReportButton';
+import { SurveyExportButtons } from '@/components/SurveyExportButtons';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ConditionBadge, SeverityBadge, SurveyStatusBadge } from '@/components/ui/StatusBadge';
 import {
@@ -32,7 +32,7 @@ import {
 import { photoCategoriesForService } from '@/constants/options';
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/AppProvider';
-import { useAuth } from '@/context/AuthProvider';
+import { useSurveyRecord } from '@/hooks/useSurveyRecord';
 import { elementTitle, exposureList, sectorProblemList, surveyHeadline, useList } from '@/lib/display';
 import { formatArea, formatDate, formatTime } from '@/lib/format';
 import { push, replace, routeParam } from '@/lib/nav';
@@ -113,23 +113,32 @@ function SectorBlock({
 
 export default function SurveyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSurvey, getProject, getClient, discardSurvey, reopenSurvey } = useApp();
-  const { session } = useAuth();
-  const survey = getSurvey(routeParam(id) ?? '');
-  const project = survey ? getProject(survey.projectId) : undefined;
-  const client = project ? getClient(project.clientId) : undefined;
-  const [openId, setOpenId] = useState<string | null>(survey?.sectors[0]?.id ?? null);
+  const { discardSurvey, reopenSurvey } = useApp();
+  const { survey, loading, ownerName, isOwner, project, client } = useSurveyRecord(routeParam(id));
+  const [openId, setOpenId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
 
   async function openEditor() {
-    if (!survey) return;
+    if (!survey || !isOwner) return;
     if (survey.status === 'completed') {
       setReopenOpen(true);
       return;
     }
     push(`/levantamientos/${survey.id}/editar`);
+  }
+
+  if (loading) {
+    return (
+      <Screen>
+        <ScreenHeader title="Levantamiento" />
+        <View className="items-center py-16">
+          <ActivityIndicator color={Colors.brand} />
+          <Text className="mt-3 text-sm text-muted">Cargando levantamiento…</Text>
+        </View>
+      </Screen>
+    );
   }
 
   if (!survey) {
@@ -147,12 +156,14 @@ export default function SurveyDetailScreen() {
         <ScreenHeader
           title={survey.code}
           right={
-            <Pressable
-              onPress={() => void openEditor()}
-              className="h-11 w-11 items-center justify-center rounded-full border border-line bg-white"
-            >
-              <Pencil size={18} color={Colors.ink} />
-            </Pressable>
+            isOwner ? (
+              <Pressable
+                onPress={() => void openEditor()}
+                className="h-11 w-11 items-center justify-center rounded-full border border-line bg-white"
+              >
+                <Pencil size={18} color={Colors.ink} />
+              </Pressable>
+            ) : undefined
           }
         />
         <EmptyState
@@ -187,12 +198,14 @@ export default function SurveyDetailScreen() {
       <ScreenHeader
         title={survey.code}
         right={
-          <Pressable
-            onPress={() => void openEditor()}
-            className="h-11 w-11 items-center justify-center rounded-full border border-line bg-white"
-          >
-            <Pencil size={18} color={Colors.ink} />
-          </Pressable>
+          isOwner ? (
+            <Pressable
+              onPress={() => void openEditor()}
+              className="h-11 w-11 items-center justify-center rounded-full border border-line bg-white"
+            >
+              <Pencil size={18} color={Colors.ink} />
+            </Pressable>
+          ) : undefined
         }
       />
 
@@ -213,7 +226,7 @@ export default function SurveyDetailScreen() {
         <Card>
           <InfoRow label="Cliente" value={client?.name} />
           <InfoRow label="Proyecto" value={project?.name} />
-          <InfoRow label="Técnico" value={session?.name ?? 'Técnico'} />
+          <InfoRow label="Técnico" value={ownerName} />
           <InfoRow label="Fecha" value={formatDate(survey.startedAt)} />
           <InfoRow label="Hora inicio" value={formatTime(survey.startedAt)} />
           <InfoRow label="Hora finalización" value={survey.completedAt ? formatTime(survey.completedAt) : '—'} />
@@ -305,8 +318,13 @@ export default function SurveyDetailScreen() {
             <SectorBlock
               key={item.id}
               sector={item}
-              expanded={openId === item.id}
-              onToggle={() => setOpenId((current) => (current === item.id ? null : item.id))}
+              expanded={(openId ?? survey.sectors[0]?.id) === item.id}
+              onToggle={() =>
+                setOpenId((current) => {
+                  const selected = current ?? survey.sectors[0]?.id;
+                  return selected === item.id ? '' : item.id;
+                })
+              }
             />
           ))
         )}
@@ -353,15 +371,15 @@ export default function SurveyDetailScreen() {
       ) : null}
 
       <View className="mt-8 gap-3 pb-4">
-        <SurveyReportButton
+        <SurveyExportButtons
           survey={survey}
           client={client}
           project={project}
-          technician={session?.name ?? 'Técnico'}
-          variant="secondary"
-          label="Compartir informe PDF"
+          technician={ownerName}
         />
-        <Button label="Eliminar levantamiento" variant="ghost" onPress={() => setDeleteOpen(true)} />
+        {isOwner ? (
+          <Button label="Eliminar levantamiento" variant="ghost" onPress={() => setDeleteOpen(true)} />
+        ) : null}
       </View>
 
       <ConfirmModal
@@ -377,24 +395,26 @@ export default function SurveyDetailScreen() {
           replace('/levantamientos');
         }}
       />
-      <ConfirmModal
-        visible={reopenOpen}
-        title="¿Reabrir como borrador?"
-        message="El levantamiento volverá a borrador para que puedas editarlo. Los datos actuales se mantienen."
-        confirmLabel="Reabrir"
-        onCancel={() => setReopenOpen(false)}
-        onConfirm={async () => {
-          if (reopening) return;
-          setReopening(true);
-          try {
-            setReopenOpen(false);
-            await reopenSurvey(survey.id);
-            push(`/levantamientos/${survey.id}/editar`);
-          } finally {
-            setReopening(false);
-          }
-        }}
-      />
+      {isOwner ? (
+        <ConfirmModal
+          visible={reopenOpen}
+          title="¿Reabrir como borrador?"
+          message="El levantamiento volverá a borrador para que puedas editarlo. Los datos actuales se mantienen."
+          confirmLabel="Reabrir"
+          onCancel={() => setReopenOpen(false)}
+          onConfirm={async () => {
+            if (reopening) return;
+            setReopening(true);
+            try {
+              setReopenOpen(false);
+              await reopenSurvey(survey.id);
+              push(`/levantamientos/${survey.id}/editar`);
+            } finally {
+              setReopening(false);
+            }
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

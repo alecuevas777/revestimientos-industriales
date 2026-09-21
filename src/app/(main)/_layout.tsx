@@ -24,6 +24,7 @@ export default function MainLayout() {
       <Drawer.Screen name="clientes" options={hidden} />
       <Drawer.Screen name="proyectos" options={hidden} />
       <Drawer.Screen name="levantamientos" options={hidden} />
+      <Drawer.Screen name="equipo" options={hidden} />
     </Drawer>
   );
 }

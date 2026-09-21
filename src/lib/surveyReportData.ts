@@ -59,8 +59,17 @@ function slugPart(value?: string) {
   return cleaned || 'sin-nombre';
 }
 
+export function surveyExportFileName(
+  survey: Survey,
+  client?: Client,
+  project?: Project,
+  extension: 'pdf' | 'xlsx' = 'pdf',
+) {
+  return `${survey.code}_${slugPart(client?.name)}_${slugPart(project?.name)}.${extension}`;
+}
+
 export function surveyReportFileName(survey: Survey, client?: Client, project?: Project) {
-  return `${survey.code}_${slugPart(client?.name)}_${slugPart(project?.name)}.pdf`;
+  return surveyExportFileName(survey, client, project, 'pdf');
 }
 
 export function photoCode(index: number) {

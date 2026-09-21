@@ -116,7 +116,7 @@ function optional(value?: string | null) {
 export function clientToRow(client: Client, userId: string): ClienteRow {
   return {
     id: client.id,
-    creado_por: userId,
+    creado_por: client.createdBy || userId,
     nombre: client.name,
     rut: optional(client.rut),
     nombre_contacto: optional(client.contactName),
@@ -136,6 +136,7 @@ export function clientToRow(client: Client, userId: string): ClienteRow {
 export function clientFromRow(row: ClienteRow): Client {
   return {
     id: row.id,
+    createdBy: row.creado_por,
     name: row.nombre,
     rut: row.rut ?? undefined,
     contactName: row.nombre_contacto ?? undefined,
@@ -156,7 +157,7 @@ export function projectToRow(project: Project, userId: string): ProyectoRow {
   return {
     id: project.id,
     cliente_id: project.clientId,
-    creado_por: userId,
+    creado_por: project.createdBy || userId,
     nombre: project.name,
     codigo: optional(project.code),
     direccion: optional(project.address),
@@ -175,6 +176,7 @@ export function projectToRow(project: Project, userId: string): ProyectoRow {
 export function projectFromRow(row: ProyectoRow): Project {
   return {
     id: row.id,
+    createdBy: row.creado_por,
     clientId: row.cliente_id,
     name: row.nombre,
     code: row.codigo ?? undefined,

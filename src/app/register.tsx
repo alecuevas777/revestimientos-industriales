@@ -29,7 +29,7 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!accepted) {
-      setError('Debes aceptar los t├®rminos y condiciones.');
+      setError('Debes aceptar los términos y condiciones.');
       return;
     }
     const invalidEmail = emailError(email, true);
@@ -38,11 +38,11 @@ export default function RegisterScreen() {
       return;
     }
     if (password.length < 6) {
-      setError('La contrase├▒a debe tener m├¡nimo 6 caracteres.');
+      setError('La contraseña debe tener mínimo 6 caracteres.');
       return;
     }
     if (password !== confirm) {
-      setError('Las contrase├▒as no coinciden.');
+      setError('Las contraseñas no coinciden.');
       return;
     }
 
@@ -94,7 +94,7 @@ export default function RegisterScreen() {
           autoCorrect={false}
           keyboardType="email-address"
           textContentType="emailAddress"
-          placeholder="Correo electr├│nico"
+          placeholder="Correo electrónico"
           error={error.toLowerCase().includes('correo') || error.toLowerCase().includes('email') ? error : undefined}
         />
         <AuthField
@@ -107,8 +107,8 @@ export default function RegisterScreen() {
           }}
           autoComplete="new-password"
           textContentType="newPassword"
-          placeholder="Contrase├▒a"
-          hint="La contrase├▒a debe tener m├¡nimo 6 caracteres."
+          placeholder="Contraseña"
+          hint="La contraseña debe tener mínimo 6 caracteres."
         />
         <AuthField
           icon={Lock}
@@ -120,7 +120,7 @@ export default function RegisterScreen() {
           }}
           autoComplete="new-password"
           textContentType="newPassword"
-          placeholder="Confirmar contrase├▒a"
+          placeholder="Confirmar contraseña"
           error={error && !error.toLowerCase().includes('correo') && !error.toLowerCase().includes('email') ? error : undefined}
         />
 
@@ -139,7 +139,7 @@ export default function RegisterScreen() {
                 accepted ? 'border-brand bg-brand' : 'border-white/40'
               }`}
             >
-              {accepted ? <Text className="text-[11px] font-bold text-white">Ô£ô</Text> : null}
+              {accepted ? <Text className="text-[11px] font-bold text-white">✓</Text> : null}
             </View>
             <Text className="flex-1 text-sm leading-5 text-white/85">
               Acepto los{' '}
@@ -149,7 +149,7 @@ export default function RegisterScreen() {
                   void Linking.openURL(APP_WEBSITE);
                 }}
               >
-                t├®rminos y condiciones
+                términos y condiciones
               </Text>
             </Text>
           </Pressable>
@@ -173,7 +173,7 @@ export default function RegisterScreen() {
 
         <AuthButton
           variant="ghost"
-          label="Volver al inicio de sesi├│n"
+          label="Volver al inicio de sesión"
           iconLeft={<ArrowLeft size={18} color="#FFFFFF" />}
           onPress={() => replace('/login')}
         />

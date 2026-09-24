@@ -115,9 +115,7 @@ Las variables `EXPO_PUBLIC_*` se inyectan en el binario desde `eas.json` en el m
 
 ## Cuentas
 
-Las crea un administrador en **Supabase → Authentication → Users**. El registro público está desactivado en la app.
-
-En `perfiles`, completar `nombre` (sale en el informe), `rol = tecnico` y `activo = true`. Para dar de baja: `activo = false`.
+Las cuentas se crean en la app (**Crear cuenta** en el login) o en **Supabase → Authentication → Users**. En `perfiles`, completar `nombre` (sale en el informe). Para dar de baja: `activo = false`.
 
 ---
 
@@ -125,7 +123,7 @@ En `perfiles`, completar `nombre` (sale en el informe), `rol = tecnico` y `activ
 
 | Archivo | Uso |
 | --- | --- |
-| [`docs/manual-uso-vicast.html`](docs/manual-uso-vicast.html) | Manual del técnico |
+| [`docs/manual-uso-vicast.pdf`](docs/manual-uso-vicast.pdf) | Manual del técnico |
 | [`docs/guia-entrega-cliente.html`](docs/guia-entrega-cliente.html) | Puesta en marcha (Supabase, Auth, backups) |
 | [`supabase/schema.sql`](supabase/schema.sql) | Esquema completo (proyecto vacío) |
 | [`supabase/migrations/`](supabase/migrations/) | Cambios incrementales |
